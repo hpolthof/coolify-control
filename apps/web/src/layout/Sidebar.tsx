@@ -133,7 +133,7 @@ export function Sidebar({
 
       {/* Mobile: nav lives in an off-canvas drawer, opened from TopBar's menu button */}
       <div className="md:hidden">
-        <Drawer open={mobileOpen} onClose={() => onCloseMobile?.()} title="Menu" width={260}>
+        <Drawer open={mobileOpen} onClose={() => onCloseMobile?.()} title="Menu" width={260} padded={false}>
           <div className="flex flex-col h-full">
             <nav className="flex-1 flex flex-col gap-1 p-3">
               <NavLinks items={visibleItems} activePath={location.pathname} onNavigate={goTo} showLabels />

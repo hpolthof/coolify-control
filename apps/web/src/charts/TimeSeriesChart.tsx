@@ -1,5 +1,5 @@
 import { COLORS } from '@/lib/colors';
-import { formatBytes, formatBps, formatPercent } from '@/lib/format';
+import { formatBytes, formatBytesCompact, formatBps, formatPercent } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import type { TimeRange } from '@cc/shared';
 import {
@@ -35,9 +35,9 @@ function formatYAxis(value: number, unit: string): string {
     case 'percent':
       return `${value}%`;
     case 'bytes':
-      return formatBytes(value, 0);
+      return formatBytesCompact(value);
     case 'bps':
-      return formatBps(value);
+      return `${formatBytesCompact(value)}/s`;
     case 'number':
       return value.toString();
     default:

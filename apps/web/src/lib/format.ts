@@ -12,6 +12,20 @@ export function formatBytes(n: number | null | undefined, digits = 1): string {
   return `${size.toFixed(digits)} ${units[unitIdx]}`;
 }
 
+/** Short form for axis ticks: one decimal below 10, none above, no trailing ".0" ("1.4 MB", "684 KB"). */
+export function formatBytesCompact(n: number | null | undefined): string {
+  if (n == null || isNaN(n)) return NULL_DISPLAY;
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let size = n;
+  let unitIdx = 0;
+  while (size >= 1024 && unitIdx < units.length - 1) {
+    size /= 1024;
+    unitIdx++;
+  }
+  const text = size < 10 ? size.toFixed(1).replace(/\.0$/, '') : Math.round(size).toString();
+  return `${text} ${units[unitIdx]}`;
+}
+
 export function formatBps(n: number | null | undefined): string {
   if (n == null || isNaN(n)) return NULL_DISPLAY;
   return `${formatBytes(n, 1)}/s`;

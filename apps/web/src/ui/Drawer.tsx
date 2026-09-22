@@ -11,6 +11,8 @@ interface DrawerProps {
   subtitle?: ReactNode;
   width?: number;
   actions?: ReactNode;
+  /** Pad the body like the header (default). Pass false when the content manages its own spacing. */
+  padded?: boolean;
   children: ReactNode;
 }
 
@@ -21,6 +23,7 @@ export function Drawer({
   subtitle,
   width = 560,
   actions,
+  padded = true,
   children,
 }: DrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -77,7 +80,7 @@ export function Drawer({
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto">{children}</div>
+        <div className={cn('flex-1 overflow-auto', padded && 'p-6')}>{children}</div>
       </div>
     </>,
     document.body,
