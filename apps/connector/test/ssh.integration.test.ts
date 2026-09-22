@@ -107,6 +107,28 @@ describe.skipIf(!RUN)('ssh.ts integration (dev sshd)', () => {
     }
   }, 20000);
 
+  it('tries the wrong key first, then the right one, through a Cloudflare Tunnel', async () => {
+    // Regression: closing the tunnel after a rejected key makes cloudflared exit with code 0.
+    // That must not be reported as a tunnel failure; the next key has to be tried.
+    const dir = mkdtempSync(join(tmpdir(), 'cc-connector-cf-wrongkey-'));
+    tempDirs.push(dir);
+    copyFileSync(join(DEV_KEYS_DIR, 'ssh_key@otherkey'), join(dir, 'ssh_key@otherkey'));
+    copyFileSync(join(DEV_KEYS_DIR, 'ssh_key@devkey'), join(dir, 'zzz_devkey'));
+    chmodSync(join(dir, 'ssh_key@otherkey'), 0o600);
+    chmodSync(join(dir, 'zzz_devkey'), 0o600);
+
+    const keys = createKeyStore(dir, log);
+    const pool = createSshPool(baseConfig({ keysDir: dir }), keys, log);
+    try {
+      const t = target({ host: 'ssh-edge.example.com', viaCloudflare: true });
+      expect(keys.keysFor(t.serverUuid)[0]?.fileName).toBe('ssh_key@otherkey');
+      const result = await pool.ping(t, 10000);
+      expect(result.code).toBe(0);
+    } finally {
+      await pool.close();
+    }
+  }, 30000);
+
   it('gives the cloudflared error for a fail.* hostname', async () => {
     const keys = createKeyStore(DEV_KEYS_DIR, log);
     const pool = createSshPool(baseConfig(), keys, log);

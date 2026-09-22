@@ -364,15 +364,18 @@ function connectViaCloudflare(target: ConnectorTarget, key: KeyEntry, config: Co
       if (lines.length) lastStderrLine = lines[lines.length - 1]!;
     });
 
+    // A spawn error means the binary is missing: nothing else will happen, fail right away.
     child.once('error', (err: NodeJS.ErrnoException) => {
       childFailure = describeCloudflaredError(err);
       finish(() => reject(childFailure!));
     });
 
+    // cloudflared also exits (code 0) when we close the tunnel ourselves, e.g. after the server
+    // rejected a key. So an exit is only recorded here; the SSH handshake result decides.
     child.once('exit', (code) => {
+      if (code === 0 && !lastStderrLine) return;
       const suffix = lastStderrLine ? `: ${lastStderrLine}` : code !== null ? ` (exit code ${code})` : '';
       childFailure = new Error(`cloudflared exited before the SSH connection to ${target.name} was ready${suffix}`);
-      finish(() => reject(childFailure!));
     });
 
     const sock = Duplex.from({ readable: child.stdout, writable: child.stdin });
@@ -397,6 +400,19 @@ function connectViaCloudflare(target: ConnectorTarget, key: KeyEntry, config: Co
       },
       (sshErr) => {
         if (settled) return;
+        // The server rejected the key: the tunnel worked, so this is the error that matters
+        // (the caller moves on to the next key).
+        if (isAuthError(sshErr)) {
+          finish(() => {
+            try {
+              child.kill();
+            } catch {
+              // ignore
+            }
+            reject(sshErr);
+          });
+          return;
+        }
         if (childFailure) {
           finish(() => {
             try {
