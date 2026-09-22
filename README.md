@@ -55,7 +55,8 @@ This runs the dashboard on the Coolify host itself with a domain and automatic H
 
 ### 3. Install the connector
 
-The connector runs on the Coolify host and enables the dashboard to collect metrics and run actions.
+The connector runs on the Coolify host and collects server/container metrics and logs for the dashboard. Actions
+(start, stop, restart, deploy) don't need it: they go through the Coolify API.
 
 1. In the dashboard, go to **Settings** → **Connector**.
 2. Click **Create token** and copy the displayed `docker run` command.
@@ -70,8 +71,12 @@ The connector runs on the Coolify host and enables the dashboard to collect metr
 - Runs a fixed set of operations: metrics collection, logs retrieval, connection verification.
 - Reaches servers exactly like Coolify does: direct SSH or `cloudflared access ssh` for servers behind a Cloudflare Tunnel.
 - Keys never leave the Coolify host and are never logged or transmitted elsewhere.
+- Limited to 256 MB of memory (`--memory 256m`): about 30 MB for the connector plus one `cloudflared` process per
+  Cloudflare Tunnel server. With many tunnel servers, raise it; Docker restarts the connector if it hits the limit.
 
-If your Cloudflare Access policy requires authentication, the connector will prompt for a service token. Set `TUNNEL_SERVICE_TOKEN_ID` and `TUNNEL_SERVICE_TOKEN_SECRET` in the connector's `.env` file.
+If your Cloudflare Access policy requires authentication for the SSH hostname, create a service token in Cloudflare
+and add `-e TUNNEL_SERVICE_TOKEN_ID=… -e TUNNEL_SERVICE_TOKEN_SECRET=…` to the command (or put them in the `.env`
+next to `deploy/connector.compose.yml`).
 
 ### 4. Build or pull images
 

@@ -16,12 +16,27 @@ import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/Toast';
 import { formatRelative } from '@/lib/format';
 import { Copy, Check, AlertTriangle } from 'lucide-react';
-import type { ConnectorToken } from '@cc/shared';
+import type { ConnectorInfo, ConnectorToken } from '@cc/shared';
 
 type DialogState = 'closed' | 'create' | 'delete' | 'showCommand';
 
 interface CreateForm {
   name: string;
+}
+
+/**
+ * The command shown after creating a token. The memory limit covers the connector (~30 MB) plus
+ * one cloudflared process per Cloudflare Tunnel server; Docker restarts the container if it is hit.
+ */
+function installCommand(info: ConnectorInfo, token: string): string {
+  return [
+    'docker run -d --name coolify-control-connector --restart unless-stopped \\',
+    '  --network host --memory 256m \\',
+    `  -v ${info.keysDir}:/keys:ro \\`,
+    `  -e CC_URL=${window.location.origin} \\`,
+    `  -e CC_TOKEN=${token} \\`,
+    `  ${info.image}`,
+  ].join('\n');
 }
 
 export function ConnectorPanel() {
@@ -76,13 +91,7 @@ export function ConnectorPanel() {
 
   const handleCopyCommand = () => {
     if (!info || !newToken) return;
-    const command = `docker run -d --name coolify-control-connector --restart unless-stopped \\
-  --network host \\
-  -v ${info.keysDir}:/keys:ro \\
-  -e CC_URL=${window.location.origin} \\
-  -e CC_TOKEN=${newToken} \\
-  ${info.image}`;
-    navigator.clipboard.writeText(command);
+    navigator.clipboard.writeText(installCommand(info, newToken));
     setCopiedCommand(true);
     setTimeout(() => setCopiedCommand(false), 2000);
   };
@@ -257,12 +266,7 @@ export function ConnectorPanel() {
 
             <div className="relative">
               <div className="bg-sunken p-3 rounded-control font-mono text-ink-3 overflow-x-auto text-13 leading-relaxed whitespace-pre-wrap break-words">
-                {`docker run -d --name coolify-control-connector --restart unless-stopped \\
-  --network host \\
-  -v ${info.keysDir}:/keys:ro \\
-  -e CC_URL=${window.location.origin} \\
-  -e CC_TOKEN=${newToken} \\
-  ${info.image}`}
+                {installCommand(info, newToken)}
               </div>
               <button
                 onClick={handleCopyCommand}
@@ -470,12 +474,7 @@ export function ConnectorPanel() {
 
           <div className="relative">
             <div className="bg-sunken p-3 rounded-control font-mono text-ink-3 overflow-x-auto text-13 leading-relaxed whitespace-pre-wrap break-words">
-              {`docker run -d --name coolify-control-connector --restart unless-stopped \\
-  --network host \\
-  -v ${info.keysDir}:/keys:ro \\
-  -e CC_URL=${window.location.origin} \\
-  -e CC_TOKEN=${newToken} \\
-  ${info.image}`}
+              {installCommand(info, newToken)}
             </div>
             <button
               onClick={handleCopyCommand}
