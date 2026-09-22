@@ -1,0 +1,25 @@
+services:
+  coolify-control:
+    build: .
+    image: coolify-control:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file: .env
+    volumes:
+      - coolify-control-data:/data
+
+volumes:
+  coolify-control-data:
+
+# Example: deploying as a Coolify "Docker Compose" resource
+#
+# To deploy this dashboard as a Coolify "Docker Compose" resource on the Coolify host:
+# 1. In Coolify, create a Docker Compose resource and paste this compose file (remove ports: ["8080:8080"])
+# 2. Set a domain (e.g., coolify-control.example.com) for HTTPS
+# 3. Set environment variables in the resource:
+#    - COOLIFY_URL=http://host.docker.internal:8000
+#    - COOLIFY_TOKEN=<your-api-token>
+#    - ADMIN_USERNAME=admin
+#    - ADMIN_PASSWORD=<secure-password>
+#    - TRUST_PROXY=1

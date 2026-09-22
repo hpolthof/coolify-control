@@ -1,0 +1,59 @@
+@@stat1
+cpu  1234 56 890 456789 234 12 34 0 0 0
+@@net1
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 5234567  45678    0    0    0     0          0         0  5234567  45678    0    0    0     0       0          0
+  eth0: 987654321 123456    1    2    0     0          0         0 876543210 98765    0    0    0     0       0          0
+docker0: 123456    12345    0    0    0     0          0         0    456789   5678    0    0    0     0       0          0
+veth123abc: 234567    23456    0    0    0     0          0         0    567890   6789    0    0    0     0       0          0
+@@stat2
+cpu  1244 56 900 456889 235 12 35 0 0 0
+@@net2
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 5234567  45678    0    0    0     0          0         0  5234567  45678    0    0    0     0       0          0
+  eth0: 987655321 123457    1    2    0     0          0         0 876544210 98766    0    0    0     0       0          0
+docker0: 123456    12345    0    0    0     0          0         0    456789   5678    0    0    0     0       0          0
+veth123abc: 234567    23456    0    0    0     0          0         0    567890   6789    0    0    0     0       0          0
+@@nproc
+8
+@@loadavg
+1.23 2.45 3.67 2/512 12345
+@@meminfo
+MemTotal:        16384000 kB
+MemFree:          2048000 kB
+MemAvailable:     8192000 kB
+Buffers:           512000 kB
+Cached:            4096000 kB
+SwapCached:            0 kB
+Active:            8192000 kB
+Inactive:          4096000 kB
+Active(anon):      6144000 kB
+Inactive(anon):    2048000 kB
+SwapTotal:         4096000 kB
+SwapFree:          3072000 kB
+Dirty:              10240 kB
+Writeback:              0 kB
+@@uptime
+86400.50 691200.00
+@@df
+Filesystem                                  1B-blocks      Used Available Capacity Mounted on
+/dev/mapper/vg0-root                      1099511627776 549755813888 549755813888      50% /
+/dev/mapper/vg0-var                        549755813888 274877906944 274877906944      50% /var
+tmpfs                                         1073741824   0 1073741824       0% /dev/shm
+/dev/sda1                                  1073741824 536870912 536870912      50% /boot
+nfs://storage.local:/export/data         10995116277760 5497558138880 5497558138880      50% /data
+@@os
+Ubuntu 22.04.1 LTS
+5.15.0-67-generic #76-Ubuntu SMP Fri Mar 18 00:11:05 UTC 2023
+@@dockerversion
+24.0.0
+@@ps
+{"ID":"abc123def456ghi789jkl000","Names":"/my-app-1","Image":"ghcr.io/myorg/my-app:latest","State":"running","Status":"Up 3 hours (healthy)","Labels":"app=my-app,env=prod"}
+{"ID":"xyz789abc456def123ghi000","Names":"/my-service-1,/service-alias-1","Image":"nginx:1.25-alpine","State":"running","Status":"Up 5 days","Labels":"tier=frontend"}
+{"ID":"qwe456rty789uio123pas000","Names":"/stopped-db","Image":"postgres:15","State":"exited","Status":"Exited (0) 2 days ago","Labels":""}
+@@stats
+{"Container":"abc123def456ghi789jkl000","Name":"my-app-1","CPUPerc":"12.34%","MemUsage":"256MiB / 2GiB","MemPerc":"12.50%","NetIO":"1.5MiB / 2.3MiB","BlockIO":"100MiB / 50MiB","PIDs":"42"}
+{"Container":"xyz789abc456def123ghi000","Name":"my-service-1","CPUPerc":"5.67%","MemUsage":"128MiB / 1GiB","MemPerc":"12.50%","NetIO":"10MiB / 5MiB","BlockIO":"50MiB / 25MiB","PIDs":"8"}
+@@end
