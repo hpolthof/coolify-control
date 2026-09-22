@@ -61,26 +61,58 @@ export const useLiveStore = create<LiveStore>((set) => ({
 
 // ---------- connection ----------
 
-let source: EventSource | null = null;
+const RETRY_DELAYS_MS = [1000, 2000, 5000, 10000, 30000];
 
-/** Opens the SSE stream once for the whole app. EventSource reconnects by itself. */
-export function useLiveConnection(): void {
-  useEffect(() => {
-    if (source) return;
-    const es = new EventSource('/api/stream');
-    source = es;
-    es.addEventListener('snapshot', (event) => {
-      try {
-        useLiveStore.getState().applySnapshot(JSON.parse((event as MessageEvent).data) as Snapshot);
-      } catch (err) {
-        console.error('Invalid snapshot event', err);
-      }
-    });
-    es.onopen = () => useLiveStore.setState({ connectionState: 'live' });
-    es.onerror = () => useLiveStore.setState({ connectionState: 'reconnecting' });
-    return () => {
+let source: EventSource | null = null;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let attempt = 0;
+
+function openStream(): void {
+  const es = new EventSource('/api/stream');
+  source = es;
+  es.addEventListener('snapshot', (event) => {
+    try {
+      useLiveStore.getState().applySnapshot(JSON.parse((event as MessageEvent).data) as Snapshot);
+    } catch (err) {
+      console.error('Invalid snapshot event', err);
+    }
+  });
+  es.onopen = () => {
+    attempt = 0;
+    useLiveStore.setState({ connectionState: 'live' });
+  };
+  es.onerror = () => {
+    useLiveStore.setState({ connectionState: 'reconnecting' });
+    // EventSource retries network drops by itself, but gives up for good on an HTTP error
+    // (e.g. the proxy's 502 while the dashboard restarts). Then we have to start over.
+    if (es.readyState === EventSource.CLOSED) {
       es.close();
       if (source === es) source = null;
+      scheduleRetry();
+    }
+  };
+}
+
+function scheduleRetry(): void {
+  if (retryTimer) return;
+  const delay = RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)]!;
+  attempt++;
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    if (!source) openStream();
+  }, delay);
+}
+
+/** Opens the SSE stream once for the whole app and keeps it open. */
+export function useLiveConnection(): void {
+  useEffect(() => {
+    if (!source && !retryTimer) openStream();
+    return () => {
+      if (retryTimer) clearTimeout(retryTimer);
+      retryTimer = null;
+      source?.close();
+      source = null;
+      attempt = 0;
     };
   }, []);
 }
