@@ -52,7 +52,7 @@ export const StatWidget: FC<StatWidgetProps> = ({ snapshot, stat, title }) => {
     : '';
 
   return (
-    <Panel className="flex flex-col justify-center items-center @container h-full w-full">
+    <Panel className="flex flex-col justify-center items-center [container-type:size] h-full w-full">
       <div ref={containerRef} className="w-full flex flex-col items-center justify-center gap-3">
         <div className="flex items-center justify-center gap-2">
           {isUnhealthyStat && (

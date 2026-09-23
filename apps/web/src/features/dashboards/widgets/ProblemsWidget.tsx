@@ -299,7 +299,7 @@ export const ProblemsWidget: FC<ProblemsWidgetProps> = ({ title, serverUuid, inc
     const serverCount = countServers(snapshot, serverUuid);
     const resourceCount = countResources(snapshot, serverUuid);
     return (
-      <Panel className="h-full w-full flex flex-col @container">
+      <Panel className="h-full w-full flex flex-col [container-type:size]">
         <div className="flex items-center justify-between gap-2 flex-shrink-0">
           <span className="text-15 font-medium text-ink-2 truncate">{headerTitle}</span>
         </div>

@@ -23,7 +23,8 @@ export interface ConnectorTarget {
 export type ConnectorOp =
   | { op: 'collect' } // run the metrics collector script
   | { op: 'logs'; container: string; lines: number } // docker logs --timestamps --tail <lines> <container>
-  | { op: 'ping' }; // open/verify the SSH connection only
+  | { op: 'ping' } // open/verify the SSH connection only
+  | { op: 'dockerDf' }; // docker system df --format '{{json .}}' (since connector 0.2.0; older ones reject it)
 
 export interface ExecOutput {
   stdout: string;

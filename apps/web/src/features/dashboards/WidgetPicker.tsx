@@ -8,6 +8,8 @@ import {
   Flame,
   ListOrdered,
   Rows3,
+  Cable,
+  Eraser,
   AppWindow,
   BarChart3,
   Clock,
@@ -43,6 +45,8 @@ const iconMap: Record<WidgetType, any> = {
   heatmap: Flame,
   top: ListOrdered,
   'server-strip': Rows3,
+  connector: Cable,
+  'docker-cleanup': Eraser,
 };
 
 const groups: { title: string; types: WidgetType[] }[] = [
@@ -52,6 +56,7 @@ const groups: { title: string; types: WidgetType[] }[] = [
     types: ['resource', 'resource-compact', 'resource-chart', 'project'],
   },
   { title: 'Fleet', types: ['overview', 'problems', 'server-strip', 'heatmap', 'top', 'stat'] },
+  { title: 'Maintenance', types: ['docker-cleanup', 'connector'] },
   { title: 'Other', types: ['text', 'clock'] },
 ];
 
@@ -142,6 +147,8 @@ function getWidgetDescription(type: WidgetType): string {
     heatmap: 'Every running resource as a tile, coloured by load',
     top: 'Resources using the most CPU or memory',
     'server-strip': 'All servers in one compact row',
+    connector: 'Whether the connector is connected, and which servers it reaches',
+    'docker-cleanup': 'Space Docker cleanup would free, and what it does to disk usage',
   };
   return descriptions[type];
 }

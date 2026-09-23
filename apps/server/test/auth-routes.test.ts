@@ -55,6 +55,9 @@ const fakeHosts: ConnectorHub = {
   async ping() {
     throw new Error('Connector not connected');
   },
+  async dockerDf() {
+    throw new Error('Connector not connected');
+  },
   status() {
     return {
       connected: false,

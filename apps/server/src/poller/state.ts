@@ -10,6 +10,7 @@ export function createStateStore(): StateStore {
   let current: Snapshot = {
     generatedAt: new Date().toISOString(),
     coolify: { ok: false, version: null, error: null, lastSyncAt: null },
+    connector: { connected: false, version: null, hostname: null, connectedAt: null, lastSeenAt: null, cloudflared: null },
     servers: [],
     resources: [],
     projects: [],

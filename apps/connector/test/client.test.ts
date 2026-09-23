@@ -113,6 +113,60 @@ describe('connector WebSocket client', () => {
     expect(runOp).toHaveBeenCalledWith(target, { op: 'ping' }, 1000);
   });
 
+  it('forwards a dockerDf request to runOp', async () => {
+    const { wss, port } = await startServer();
+    const connPromise = waitFor<import('ws').WebSocket>(wss, 'connection');
+
+    const runOp = vi.fn().mockResolvedValue({ stdout: '{"Type":"Images"}', stderr: '', code: 0, durationMs: 1 });
+    const client = createClient({
+      config: makeConfig(port),
+      log: createLogger('error'),
+      version: '1.0.0',
+      keysFound: () => 0,
+      cloudflaredAvailable: false,
+      runOp,
+      timing: FAST_TIMING,
+    });
+    clients.push(client);
+    client.start();
+
+    const serverSocket = await connPromise;
+    await waitFor(serverSocket, 'message'); // hello
+
+    const responsePromise = waitFor<Buffer>(serverSocket, 'message');
+    serverSocket.send(JSON.stringify({ type: 'request', id: 'req-df', target, timeoutMs: 1000, payload: { op: 'dockerDf' } }));
+    const response = JSON.parse((await responsePromise).toString());
+    expect(response.ok).toBe(true);
+    expect(runOp).toHaveBeenCalledWith(target, { op: 'dockerDf' }, 1000);
+  });
+
+  it('rejects an op it does not recognize with a clear error instead of dropping it', async () => {
+    const { wss, port } = await startServer();
+    const connPromise = waitFor<import('ws').WebSocket>(wss, 'connection');
+
+    // A real runOp (like index.ts's) delegates unknown ops to buildCommand, which throws.
+    const runOp = vi.fn().mockRejectedValue(new Error('unknown op: {"op":"somethingNew"}'));
+    const client = createClient({
+      config: makeConfig(port),
+      log: createLogger('error'),
+      version: '1.0.0',
+      keysFound: () => 0,
+      cloudflaredAvailable: false,
+      runOp,
+      timing: FAST_TIMING,
+    });
+    clients.push(client);
+    client.start();
+
+    const serverSocket = await connPromise;
+    await waitFor(serverSocket, 'message'); // hello
+
+    const responsePromise = waitFor<Buffer>(serverSocket, 'message');
+    serverSocket.send(JSON.stringify({ type: 'request', id: 'req-unknown', target, timeoutMs: 1000, payload: { op: 'somethingNew' } }));
+    const response = JSON.parse((await responsePromise).toString());
+    expect(response).toEqual({ type: 'response', id: 'req-unknown', ok: false, error: 'unknown op: {"op":"somethingNew"}' });
+  });
+
   it('replies ok:false when the op fails', async () => {
     const { wss, port } = await startServer();
     const connPromise = waitFor<import('ws').WebSocket>(wss, 'connection');

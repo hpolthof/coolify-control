@@ -18,7 +18,7 @@ interface DashboardTabsProps {
   onEditMode(enable: boolean): void;
   onSave(): void;
   onCancel(): void;
-  onKiosk(): void;
+  onKiosk(rotate: boolean): void;
   onRename(id: number, name: string): void;
   onDuplicate(id: number): void;
   onRotationChange(id: number, seconds: number | null): void;
@@ -79,6 +79,9 @@ export function DashboardTabs({
     }
   };
 
+  const rotatingCount = dashboards.filter((d) => d.rotationSeconds).length;
+  const canRotate = rotatingCount >= 2;
+
   return (
     <div className="flex items-center gap-4 border-b border-rule px-4 py-0">
       <div className="flex items-center gap-1 overflow-x-auto flex-1">
@@ -111,13 +114,29 @@ export function DashboardTabs({
       )}
 
       <div className="flex items-center gap-2">
-        <button
-          onClick={onKiosk}
-          className="p-2 rounded-control hover:bg-raised transition-colors flex-shrink-0"
-          title="Kiosk mode"
-        >
-          <Tv size={20} />
-        </button>
+        <Menu
+          trigger={
+            <button
+              className="p-2 rounded-control hover:bg-raised transition-colors flex-shrink-0"
+              title="Kiosk mode"
+            >
+              <Tv size={20} />
+            </button>
+          }
+          items={[
+            {
+              label: 'Show this dashboard',
+              onSelect: () => onKiosk(false),
+            },
+            {
+              label: canRotate
+                ? 'Rotate dashboards'
+                : 'Rotate dashboards (set a rotation time on at least two dashboards)',
+              onSelect: () => onKiosk(true),
+              disabled: !canRotate,
+            },
+          ]}
+        />
 
         {operate && (
           <>
@@ -312,6 +331,9 @@ export function DashboardTabs({
             />
             <p className="text-12 text-ink-3 mt-2">
               Leave empty to skip this dashboard in rotation
+            </p>
+            <p className="text-12 text-ink-3 mt-1">
+              Rotation needs at least two dashboards with a rotation time. Now: {rotatingCount}.
             </p>
           </div>
         </div>

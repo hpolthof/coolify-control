@@ -1,5 +1,5 @@
 import type { Widget, WidgetType } from '@cc/shared';
-import { WIDGET_LABELS } from '@cc/shared';
+import { WIDGET_LABELS, WIDGET_SCALE_MAX, WIDGET_SCALE_MIN } from '@cc/shared';
 import { WIDGET_FIELDS } from './widgets/registry';
 import { Dialog } from '@/ui/Dialog';
 import { Button } from '@/ui/Button';
@@ -73,6 +73,7 @@ export function WidgetConfigDialog({
   const [text, setText] = useState(widget?.config.text ?? '');
   const [limit, setLimit] = useState(String(widget?.config.limit ?? 10));
   const [includeStopped, setIncludeStopped] = useState(widget?.config.includeStopped ?? false);
+  const [scale, setScale] = useState(widget?.config.scale ?? 1);
 
   const fields = type ? WIDGET_FIELDS[type] : [];
 
@@ -135,6 +136,8 @@ export function WidgetConfigDialog({
     if (fields.includes('usageMetric')) newConfig.metric = (metric === 'mem' ? 'mem' : 'cpu') as any;
     if (fields.includes('limit')) newConfig.limit = Number(limit) || 10;
     if (fields.includes('includeStopped')) newConfig.includeStopped = includeStopped;
+    // Scale applies to every widget type, regardless of WIDGET_FIELDS.
+    if (scale !== 1) newConfig.scale = scale;
 
     onSave({
       ...widget,
@@ -303,6 +306,28 @@ export function WidgetConfigDialog({
             />
           </Field>
         )}
+
+        <Field label="Scale" hint="Zooms the widget's content; its grid size stays the same">
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min={WIDGET_SCALE_MIN * 100}
+              max={WIDGET_SCALE_MAX * 100}
+              step={10}
+              value={Math.round(scale * 100)}
+              onChange={e => setScale(Number(e.target.value) / 100)}
+              className="flex-1 accent-accent"
+            />
+            <span className="num text-13 text-ink-2 w-12 text-right flex-shrink-0">
+              {Math.round(scale * 100)}%
+            </span>
+            {scale !== 1 && (
+              <Button variant="secondary" size="sm" onClick={() => setScale(1)}>
+                Reset to 100%
+              </Button>
+            )}
+          </div>
+        </Field>
       </div>
     </Dialog>
   );

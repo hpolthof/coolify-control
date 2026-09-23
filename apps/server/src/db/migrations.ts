@@ -101,4 +101,35 @@ export function migrate(db: DatabaseSync): void {
       COMMIT;
     `);
   }
+
+  if (currentVersion < 3) {
+    // The dashboard grid went from 12 columns / 40px rows to 24 columns / 14px rows (half steps,
+    // same pixel sizes): double every stored position and size.
+    const rows = db.prepare('SELECT id, widgets_json FROM dashboards').all() as { id: number | bigint; widgets_json: string }[];
+    const update = db.prepare('UPDATE dashboards SET widgets_json = ? WHERE id = ?');
+    db.exec('BEGIN');
+    try {
+      for (const row of rows) {
+        let widgets: unknown;
+        try {
+          widgets = JSON.parse(row.widgets_json);
+        } catch {
+          continue;
+        }
+        if (!Array.isArray(widgets)) continue;
+        const doubled = widgets.map((w) => {
+          if (!w || typeof w !== 'object') return w;
+          const o = w as Record<string, unknown>;
+          const twice = (v: unknown) => (typeof v === 'number' ? v * 2 : v);
+          return { ...o, x: twice(o.x), y: twice(o.y), w: twice(o.w), h: twice(o.h) };
+        });
+        update.run(JSON.stringify(doubled), row.id);
+      }
+      db.exec('PRAGMA user_version = 3');
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+  }
 }

@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import type { Dashboard, DashboardInput, WidgetType } from '@cc/shared';
-import { WIDGET_DEFAULT_SIZE, WIDGET_TYPES } from '@cc/shared';
+import { GRID_COLS, WIDGET_DEFAULT_SIZE, WIDGET_TYPES } from '@cc/shared';
 import type { AppDeps } from '../deps';
 import { HttpError } from '../app';
 import { requireRole } from '../auth/plugin';
@@ -24,6 +24,7 @@ const widgetConfigSchema = z.object({
   text: z.string().optional(),
   limit: z.number().int().min(1).max(50).optional(),
   includeStopped: z.boolean().optional(),
+  scale: z.number().min(0.5).max(3).optional(),
 });
 
 const widgetSchema = z.object({
@@ -31,8 +32,8 @@ const widgetSchema = z.object({
   type: z.string(), // will validate against WidgetType
   x: z.number().int().min(0),
   y: z.number().int().min(0),
-  w: z.number().int().min(1).max(12),
-  h: z.number().int().min(1).max(40),
+  w: z.number().int().min(1).max(GRID_COLS),
+  h: z.number().int().min(1).max(80),
   config: widgetConfigSchema,
 });
 
@@ -71,7 +72,7 @@ function validateWidgets(widgets: unknown[]): void {
       throw new HttpError(400, 'bad_request', 'Widget position and size must be numbers');
     }
 
-    if (w.x < 0 || w.y < 0 || (w.w as number) < 1 || (w.w as number) > 12 || (w.h as number) < 1 || (w.h as number) > 40) {
+    if (w.x < 0 || w.y < 0 || (w.w as number) < 1 || (w.w as number) > GRID_COLS || (w.h as number) < 1 || (w.h as number) > 80) {
       throw new HttpError(400, 'bad_request', 'Widget position/size out of bounds');
     }
   }
@@ -86,13 +87,13 @@ function createDefaultDashboard(snapshot: { servers: unknown[] }): DashboardInpu
     type: 'overview',
     x: 0,
     y: 0,
-    w: 12,
-    h: 3,
+    w: GRID_COLS,
+    h: WIDGET_DEFAULT_SIZE.overview.h,
     config: {},
   });
 
-  // Add server widgets (4 wide, stacked)
-  let y = 3;
+  // Add server widgets, side by side, wrapping into rows
+  let y = WIDGET_DEFAULT_SIZE.overview.h;
   let x = 0;
   for (let i = 0; i < (snapshot.servers as unknown[]).length; i++) {
     const server = (snapshot.servers as Record<string, unknown>[])[i];
@@ -109,7 +110,7 @@ function createDefaultDashboard(snapshot: { servers: unknown[] }): DashboardInpu
     });
 
     x += defaultSize.w;
-    if (x + defaultSize.w > 12) {
+    if (x + defaultSize.w > GRID_COLS) {
       x = 0;
       y += defaultSize.h;
     }

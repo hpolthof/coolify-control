@@ -20,6 +20,7 @@ const DEFAULT_TIMEOUTS: Record<ConnectorOp['op'], number> = {
   collect: 15_000,
   logs: 15_000,
   ping: 12_000,
+  dockerDf: 30_000, // docker system df walks every image layer; slow on busy hosts
 };
 
 interface Pending {
@@ -320,6 +321,9 @@ export function createConnectorHub(log: Logger): ConnectorHub {
     },
     ping(target, timeoutMs = DEFAULT_TIMEOUTS.ping) {
       return request(target, { op: 'ping' }, timeoutMs);
+    },
+    dockerDf(target, timeoutMs = DEFAULT_TIMEOUTS.dockerDf) {
+      return request(target, { op: 'dockerDf' }, timeoutMs);
     },
     status(): ConnectorStatus {
       return {

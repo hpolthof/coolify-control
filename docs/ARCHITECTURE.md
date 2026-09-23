@@ -9,7 +9,7 @@ It runs as one Docker container next to (or on) the Coolify host.
 |---|---|
 | **Servers** | Every Coolify server as a card: health, CPU, memory, disk, load, network, uptime, container counts, CPU sparkline. Click a card for detail history charts (1h/6h/24h/7d). |
 | **Resources** | Every application, service and database, grouped by project and environment. Card per resource: state, health, server, CPU/memory from its containers, sparkline, last deployment. Actions: start, stop, restart, deploy. Logs viewer per resource. |
-| **Dashboards** | Multiple named, shared dashboards on a 12-column grid. Edit mode: add widgets (server card, resource card, charts, single stats, fleet overview, project list, note, clock), drag and resize, save. Kiosk mode: fullscreen, no chrome, optional rotation between dashboards. |
+| **Dashboards** | Multiple named, shared dashboards on a 24-column grid. Edit mode: add widgets (server card, resource card, charts, single stats, fleet overview, project list, note, clock), drag and resize, save. Kiosk mode: fullscreen, no chrome, optional rotation between dashboards. |
 | **Settings** | Users (admin, operator, viewer), kiosk links (read-only token URLs for TV screens), connector tokens (create/revoke), system status (Coolify API, connector connection, database). |
 | **Later (TODO.md)** | Log error detection rules, alerts, notifications, deployment log streaming. |
 

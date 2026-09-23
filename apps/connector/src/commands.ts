@@ -47,6 +47,8 @@ function buildPayload(op: ConnectorOp): string {
       return COLLECT_SCRIPT;
     case 'logs':
       return buildLogsPayload(op.container, op.lines);
+    case 'dockerDf':
+      return "docker system df --format '{{json .}}'";
     case 'ping':
       throw new Error('ping does not run a command');
     default: {

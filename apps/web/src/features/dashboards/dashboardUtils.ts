@@ -1,4 +1,5 @@
 import type { Widget } from '@cc/shared';
+import { GRID_COLS } from '@cc/shared';
 import type { Layout } from 'react-grid-layout';
 
 export function newWidgetId(): string {
@@ -9,7 +10,7 @@ export function findFreeSpot(
   widgets: Widget[],
   w: number,
   h: number,
-  cols = 12
+  cols = GRID_COLS
 ): { x: number; y: number } {
   if (widgets.length === 0) {
     return { x: 0, y: 0 };

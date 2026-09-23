@@ -6,7 +6,7 @@ A fullscreen monitoring and control dashboard for a Coolify v4 installation. Run
 
 - **Servers**: Monitor every Coolify server with live health, CPU, memory, disk usage, load, network, uptime, and container counts. Historical charts (1h / 6h / 24h / 7d).
 - **Resources**: Track every application, service, and database grouped by project and environment. View state, health, resource usage, and deployment history. Actions: start, stop, restart, deploy.
-- **Dashboards**: Create multiple named dashboards with customizable widgets on a 12-column grid (server cards, resource cards, charts, stats, fleet overview, project lists, notes, clock). Edit mode with drag-and-drop. Kiosk mode for fullscreen TV displays with optional auto-rotation between dashboards.
+- **Dashboards**: Create multiple named dashboards with customizable widgets on a 24-column grid (server cards, resource cards, charts, stats, fleet overview, project lists, notes, clock). Edit mode with drag-and-drop. Kiosk mode for fullscreen TV displays with optional auto-rotation between dashboards.
 - **Settings**: User management (admin, operator, viewer roles), kiosk links, system status, connector management.
 
 [Screenshot placeholder]

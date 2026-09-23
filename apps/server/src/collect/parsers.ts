@@ -1,4 +1,4 @@
-import type { DiskUsage } from '@cc/shared';
+import type { DiskUsage, DockerDfRow, DockerDiskUsage } from '@cc/shared';
 
 /**
  * Parse a single line from /proc/stat
@@ -254,6 +254,59 @@ export function parseDockerLabels(s: string): Record<string, string> {
   }
 
   return result;
+}
+
+export const ZERO_DF_ROW: DockerDfRow = { count: 0, active: 0, size: 0, reclaimable: 0 };
+
+/**
+ * Parse `docker system df --format '{{json .}}'` output: one JSON object per line, e.g.
+ * `{"Type":"Images","TotalCount":"12","Active":"5","Size":"4.1GB","Reclaimable":"2.3GB (56%)"}`.
+ * Known types: "Images", "Containers", "Local Volumes", "Build Cache". The "(56%)" suffix on
+ * Reclaimable is informational and ignored; a missing type (e.g. no build cache yet) becomes
+ * all zeros. `reclaimable` on the result is the sum of all four rows' reclaimable bytes.
+ */
+export function parseDockerSystemDf(stdout: string): Omit<DockerDiskUsage, 'ts' | 'error'> {
+  const rows = new Map<string, DockerDfRow>();
+
+  for (const line of stdout.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    let obj: Record<string, unknown>;
+    try {
+      obj = JSON.parse(trimmed);
+    } catch {
+      continue;
+    }
+    const type = typeof obj.Type === 'string' ? obj.Type : '';
+    if (!type) continue;
+
+    const count = parseInt(String(obj.TotalCount ?? '0'), 10);
+    const active = parseInt(String(obj.Active ?? '0'), 10);
+    const size = parseDockerSize(String(obj.Size ?? ''));
+    // Strip a trailing "(NN%)" from e.g. "2.3GB (56%)" before parsing the size.
+    const reclaimableRaw = String(obj.Reclaimable ?? '').replace(/\s*\([^)]*\)\s*$/, '');
+    const reclaimable = parseDockerSize(reclaimableRaw);
+
+    rows.set(type, {
+      count: Number.isNaN(count) ? 0 : count,
+      active: Number.isNaN(active) ? 0 : active,
+      size,
+      reclaimable,
+    });
+  }
+
+  const images = rows.get('Images') ?? ZERO_DF_ROW;
+  const containers = rows.get('Containers') ?? ZERO_DF_ROW;
+  const volumes = rows.get('Local Volumes') ?? ZERO_DF_ROW;
+  const buildCache = rows.get('Build Cache') ?? ZERO_DF_ROW;
+
+  return {
+    images,
+    containers,
+    volumes,
+    buildCache,
+    reclaimable: images.reclaimable + containers.reclaimable + volumes.reclaimable + buildCache.reclaimable,
+  };
 }
 
 /**

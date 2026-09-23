@@ -8,11 +8,13 @@ import type {
 import type { Inventory, InventoryInput, InventoryServer } from '../coolify/types';
 import { buildInventory } from '../coolify/normalize';
 import { parseCollectorOutput, type CollectorOutput, type RawContainer, type RawContainerStats } from '../collect/collector';
+import { parseDockerSystemDf, ZERO_DF_ROW } from '../collect/parsers';
 import { serverHealth, resourceStateHealth } from './health';
 import { mapContainers } from './mapping';
 import type {
   ConnectorTarget,
   ContainerInfo,
+  DockerDiskUsage,
   Health,
   ResourceMetrics,
   ResourceSummary,
@@ -25,6 +27,14 @@ export type PollerDeps = Omit<AppDeps, 'poller' | 'auth'>;
 
 const HOUSEKEEPING_INTERVAL_MS = 10 * 60 * 1000;
 const FANOUT = 4;
+
+// `docker system df` walks every image layer and the build cache: seconds of dockerd CPU per run
+// (measured ~15 s CPU on a workstation with a large build cache), so refresh rarely.
+const DOCKER_DF_INTERVAL_MS = 30 * 60 * 1000; // normal refresh cadence
+const DOCKER_DF_UNSUPPORTED_INTERVAL_MS = 60 * 60 * 1000; // connector too old for dockerDf
+const DOCKER_DF_CONCURRENCY = 2;
+const DOCKER_DF_UNSUPPORTED_MESSAGE = 'Update the connector to see cleanup data';
+const DOCKER_DF_CHECK_INTERVAL_MS = 20_000; // how often to check which servers are due; collection itself only runs when due
 
 /** Run `fn` over `items` with at most `limit` in flight; results keep input order. */
 async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<PromiseSettledResult<R>[]> {
@@ -62,6 +72,12 @@ interface ResourceState {
   containers: ContainerInfo[];
   metrics: ResourceMetrics | null;
   prevNet: { rx: number; tx: number; ts: number } | null;
+}
+
+interface DockerDfState {
+  data: DockerDiskUsage | null; // last good (or last-known-with-error) value; null until the first attempt finishes
+  nextAt: number; // epoch ms this server is next due for a collection; 0 = due now
+  inFlight: boolean;
 }
 
 /** Container health from docker state + status text ("Up 3 hours (healthy)"). */
@@ -114,9 +130,11 @@ export function createPoller(deps: PollerDeps): PollerHandle {
   let lastSyncAt: string | null = null;
   let inventoryRun: Promise<void> | null = null;
   let metricsRun: Promise<void> | null = null;
+  let dockerDfRun: Promise<void> | null = null;
 
   const servers = new Map<string, ServerState>();
   const resources = new Map<string, ResourceState>();
+  const dockerDf = new Map<string, DockerDfState>();
 
   let lastTickAt: string | null = null;
   let lastTickMs: number | null = null;
@@ -142,12 +160,27 @@ export function createPoller(deps: PollerDeps): PollerHandle {
     return r;
   }
 
+  // A fresh entry is due immediately, so a server newly seen in inventory (including at
+  // startup, and after the connector reconnects and inventory is re-synced) gets its first
+  // dockerDf collection on the very next opportunity instead of waiting a full interval.
+  function dockerDfState(uuid: string): DockerDfState {
+    let d = dockerDf.get(uuid);
+    if (!d) {
+      d = { data: null, nextAt: 0, inFlight: false };
+      dockerDf.set(uuid, d);
+    }
+    return d;
+  }
+
   // Drop state for servers/resources that no longer exist in Coolify, so the
   // maps don't grow unbounded as things get deleted over time.
   function pruneStaleState(inv: Inventory): void {
     const serverUuids = new Set(inv.servers.map((s) => s.uuid));
     for (const uuid of servers.keys()) {
       if (!serverUuids.has(uuid)) servers.delete(uuid);
+    }
+    for (const uuid of dockerDf.keys()) {
+      if (!serverUuids.has(uuid)) dockerDf.delete(uuid);
     }
     const resourceUuids = new Set(inv.resources.map((r) => r.uuid));
     for (const uuid of resources.keys()) {
@@ -252,6 +285,53 @@ export function createPoller(deps: PollerDeps): PollerHandle {
       throw new Error((res.stderr || res.stdout).trim().split('\n').pop() || `collector exited with code ${res.code}`);
     }
     return parseCollectorOutput(res.stdout);
+  }
+
+  async function collectDockerDf(server: InventoryServer): Promise<DockerDiskUsage> {
+    const target = targetFor(server.uuid)!;
+    const res = await hosts.dockerDf(target);
+    if (res.code !== 0) {
+      throw new Error((res.stderr || res.stdout).trim().split('\n').pop() || `docker system df exited with code ${res.code}`);
+    }
+    return { ...parseDockerSystemDf(res.stdout), ts: Date.now(), error: null };
+  }
+
+  // Refreshes `dockerDisk` for servers whose entry is due, at most DOCKER_DF_CONCURRENCY at a
+  // time. Runs on the same cadence as the metrics tick but only actually talks to the connector
+  // for servers past their `nextAt`, so most ticks are a no-op comparison.
+  async function collectDockerDfDue(): Promise<boolean> {
+    if (!inventory) return false;
+    if (!hosts.status().connected) return false; // only collect while the connector is up
+    const now = Date.now();
+    const due = inventory.servers.filter((s) => {
+      const d = dockerDfState(s.uuid);
+      return !d.inFlight && d.nextAt <= now;
+    });
+    if (due.length === 0) return false;
+
+    await mapLimit(due, DOCKER_DF_CONCURRENCY, async (server) => {
+      const d = dockerDfState(server.uuid);
+      d.inFlight = true;
+      try {
+        d.data = await collectDockerDf(server);
+        d.nextAt = Date.now() + DOCKER_DF_INTERVAL_MS;
+      } catch (err) {
+        const message = errorMessage(err);
+        // An older connector without the dockerDf op forwards the request but rejects it
+        // explicitly (buildCommand's "unknown op" fallback) instead of running it — back off
+        // hard so we don't keep asking a connector that will never answer differently.
+        const unsupported = /unknown op/i.test(message);
+        const errorText = unsupported ? DOCKER_DF_UNSUPPORTED_MESSAGE : message;
+        d.data = d.data
+          ? { ...d.data, error: errorText }
+          : { ts: Date.now(), images: ZERO_DF_ROW, containers: ZERO_DF_ROW, volumes: ZERO_DF_ROW, buildCache: ZERO_DF_ROW, reclaimable: 0, error: errorText };
+        d.nextAt = Date.now() + (unsupported ? DOCKER_DF_UNSUPPORTED_INTERVAL_MS : DOCKER_DF_INTERVAL_MS);
+        log.debug({ server: server.name, error: message }, 'dockerDf collect failed');
+      } finally {
+        d.inFlight = false;
+      }
+    });
+    return true;
   }
 
   function applyContainers(serverUuid: string, out: CollectorOutput, ts: number, rows: ResourceMetricRow[]) {
@@ -488,13 +568,24 @@ export function createPoller(deps: PollerDeps): PollerHandle {
         health: serverHealth(sshOk ? (s?.metrics ?? null) : null, sshOk, s?.failures ?? 0, srv.coolifyReachable, counts.unhealthy > 0),
         metrics: s?.metrics ?? null,
         resourceCounts: counts,
+        dockerDisk: dockerDf.get(srv.uuid)?.data ?? null,
         updatedAt: s?.lastPollAt ?? lastSyncAt,
       };
     });
 
+    const c = hosts.status();
+
     const snapshot: Snapshot = {
       generatedAt: now,
       coolify: { ok: inv !== null && coolifyError === null, version: inv?.version ?? null, error: coolifyError, lastSyncAt },
+      connector: {
+        connected: c.connected,
+        version: c.version,
+        hostname: c.hostname,
+        connectedAt: c.connectedAt,
+        lastSeenAt: c.lastSeenAt,
+        cloudflared: c.cloudflared,
+      },
       servers: serverSummaries,
       resources: resourceSummaries,
       projects: inv?.projects ?? [],
@@ -538,13 +629,27 @@ export function createPoller(deps: PollerDeps): PollerHandle {
         const r = repos.metrics.compact(Date.now(), config.rawRetentionHours, config.historyDays);
         if (r.aggregated || r.deleted) log.debug(r, 'metrics compacted');
       });
+      // Own cadence (independent of the metrics tick) so a slow/timed-out `docker system df`
+      // never delays server/container metrics; most checks are a cheap no-op since collection
+      // only actually runs for servers past their `nextAt`.
+      loop(DOCKER_DF_CHECK_INTERVAL_MS, async () => {
+        if (inventoryRun && !inventory) await inventoryRun; // first tick: wait for the inventory, like the metrics loop
+        dockerDfRun = collectDockerDfDue()
+          .then((didWork) => {
+            if (didWork) publishSnapshot();
+          })
+          .finally(() => {
+            dockerDfRun = null;
+          });
+        await dockerDfRun;
+      });
     },
 
     async stop() {
       stopped = true;
       for (const t of timers) clearTimeout(t);
       timers.clear();
-      const running = [inventoryRun, metricsRun].filter(Boolean) as Promise<void>[];
+      const running = [inventoryRun, metricsRun, dockerDfRun].filter(Boolean) as Promise<void>[];
       await Promise.race([Promise.allSettled(running), new Promise((r) => setTimeout(r, 5000))]);
     },
 

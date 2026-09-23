@@ -21,7 +21,7 @@ export const ClockWidget: FC<ClockWidgetProps> = ({ title }) => {
   }, []);
 
   return (
-    <Panel className="flex flex-col justify-center items-center @container h-full w-full gap-2">
+    <Panel className="flex flex-col justify-center items-center [container-type:size] h-full w-full gap-2">
       <div className={cn(
         'font-num font-semibold leading-tight text-center',
         'text-[clamp(28px,22cqh,96px)]'

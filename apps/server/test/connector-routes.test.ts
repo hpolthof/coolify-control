@@ -60,6 +60,9 @@ function makeFakeHosts(): ConnectorHub & {
     async ping() {
       throw new Error('not implemented');
     },
+    async dockerDf() {
+      throw new Error('not implemented');
+    },
     status() {
       return {
         connected: false,

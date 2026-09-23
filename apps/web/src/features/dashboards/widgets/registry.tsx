@@ -16,6 +16,8 @@ import { ProblemsWidget } from './ProblemsWidget';
 import { HeatmapWidget } from './HeatmapWidget';
 import { TopWidget } from './TopWidget';
 import { ServerStripWidget } from './ServerStripWidget';
+import { ConnectorWidget } from './ConnectorWidget';
+import { DockerCleanupWidget } from './DockerCleanupWidget';
 
 export type WidgetField =
   | 'title'
@@ -48,6 +50,8 @@ export const WIDGET_FIELDS: Record<WidgetType, WidgetField[]> = {
   heatmap: ['title', 'serverFilter', 'usageMetric'],
   top: ['title', 'serverFilter', 'usageMetric', 'limit'],
   'server-strip': ['title'],
+  connector: ['title'],
+  'docker-cleanup': ['title', 'serverFilter'],
 };
 
 export function renderWidget(widget: Widget, ctx: { editing: boolean }): ReactNode {
@@ -154,6 +158,12 @@ export function renderWidget(widget: Widget, ctx: { editing: boolean }): ReactNo
     case 'server-strip':
       return <ServerStripWidget title={config.title} />;
 
+    case 'connector':
+      return <ConnectorWidget title={config.title} />;
+
+    case 'docker-cleanup':
+      return <DockerCleanupWidget title={config.title} serverUuid={config.serverUuid} />;
+
     default:
       return null;
   }
@@ -240,6 +250,12 @@ export function widgetTitle(widget: Widget, snapshot: Snapshot | null): string {
 
     case 'server-strip':
       return 'Servers';
+
+    case 'connector':
+      return 'Connector';
+
+    case 'docker-cleanup':
+      return withServer('Docker cleanup', snapshot, config.serverUuid);
 
     default:
       return 'Widget';

@@ -89,9 +89,13 @@ function isValidTarget(t: unknown): t is ConnectorTarget {
 function isValidOp(op: unknown): op is ConnectorOp {
   if (!op || typeof op !== 'object') return false;
   const o = op as Record<string, unknown>;
-  if (o.op === 'collect' || o.op === 'ping') return true;
+  if (typeof o.op !== 'string') return false;
   if (o.op === 'logs') return typeof o.container === 'string' && typeof o.lines === 'number';
-  return false;
+  // collect/ping/dockerDf take no extra fields. Any other op name is still forwarded here
+  // (structurally valid) rather than dropped: buildCommand is the single source of truth for
+  // which ops exist and rejects the rest with a clear "unknown op" error, so a dashboard newer
+  // than this connector gets an explicit answer instead of a silent timeout.
+  return true;
 }
 
 function isValidRequest(msg: unknown): msg is Extract<DashboardMessage, { type: 'request' }> {

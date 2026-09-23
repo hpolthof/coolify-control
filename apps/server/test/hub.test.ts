@@ -190,6 +190,40 @@ describe('ConnectorHub', () => {
     expect(status.lastSeenAt).toBeTruthy();
   });
 
+  it('sends a dockerDf request and resolves with the response', async () => {
+    const hub = makeHub();
+    const socket = new FakeSocket();
+    hub.attach(socket, { tokenId: 1, remoteAddress: '127.0.0.1' });
+    socket.emit('message', JSON.stringify(hello()));
+
+    const promise = hub.dockerDf(target, 2000);
+    await vi.waitFor(() => expect(socket.send).toHaveBeenCalled());
+    const sent = JSON.parse(socket.send.mock.calls[0]![0] as string);
+    expect(sent.payload).toEqual({ op: 'dockerDf' });
+
+    socket.emit(
+      'message',
+      JSON.stringify({ type: 'response', id: sent.id, ok: true, result: { stdout: '{"Type":"Images"}', stderr: '', code: 0, durationMs: 5 } }),
+    );
+
+    await expect(promise).resolves.toMatchObject({ stdout: '{"Type":"Images"}' });
+  });
+
+  it('rejects a dockerDf request with the connector-provided error (e.g. an older connector)', async () => {
+    const hub = makeHub();
+    const socket = new FakeSocket();
+    hub.attach(socket, { tokenId: 1, remoteAddress: '127.0.0.1' });
+    socket.emit('message', JSON.stringify(hello()));
+
+    const promise = hub.dockerDf(target, 2000);
+    await vi.waitFor(() => expect(socket.send).toHaveBeenCalled());
+    const sent = JSON.parse(socket.send.mock.calls[0]![0] as string);
+
+    socket.emit('message', JSON.stringify({ type: 'response', id: sent.id, ok: false, error: 'unknown op: {"op":"dockerDf"}' }));
+
+    await expect(promise).rejects.toThrow('unknown op');
+  });
+
   it('disconnectToken closes only the connection for that token', async () => {
     const hub = makeHub();
     const socket = new FakeSocket();

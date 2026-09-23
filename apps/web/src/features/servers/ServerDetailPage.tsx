@@ -7,9 +7,8 @@ import { Panel } from '@/ui/Panel';
 import { StatusPill } from '@/ui/StatusPill';
 import { Skeleton } from '@/ui/Skeleton';
 import { RangePicker } from '@/charts/RangePicker';
-import { useResourceDrawer } from '@/features/resources/drawerStore';
+import { ResourceTable } from '@/features/resources/ResourceTable';
 import { formatBytes, formatUptime } from '@/lib/format';
-import { cn } from '@/lib/cn';
 import { ChevronLeft } from 'lucide-react';
 import { ServerHistoryChart } from './ServerHistoryChart';
 
@@ -157,33 +156,15 @@ export function ServerDetailPage() {
 
       {/* Resources on this server */}
       {serverResources.length > 0 && (
-        <Panel>
-          <h2 className="text-15 font-medium text-ink mb-4">Resources on this server</h2>
-          <div className="space-y-2">
-            {serverResources.map((resource) => (
-              <button
-                key={resource.uuid}
-                onClick={() =>
-                  useResourceDrawer.getState().open(resource.uuid)
-                }
-                className="w-full flex items-center justify-between p-3 rounded-control hover:bg-raised transition-colors text-left"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-ink truncate">{resource.name}</p>
-                  <p className="text-12 text-ink-3">
-                    {resource.kind} · {resource.serverName}
-                  </p>
-                </div>
-                {resource.metrics && (
-                  <div className="text-12 text-ink-2 ml-4 whitespace-nowrap">
-                    <span className="num">
-                      CPU {resource.metrics.cpuPercent.toFixed(1)}% · Mem{' '}
-                      {formatBytes(resource.metrics.memUsed)}
-                    </span>
-                  </div>
-                )}
-              </button>
-            ))}
+        <Panel padded={false}>
+          <div className="flex items-baseline justify-between p-4 pb-0">
+            <h2 className="text-15 font-medium text-ink">Resources on this server</h2>
+            <span className="text-13 text-ink-2 num">
+              {serverResources.length} resource{serverResources.length === 1 ? '' : 's'}
+            </span>
+          </div>
+          <div className="mt-3">
+            <ResourceTable resources={serverResources} />
           </div>
         </Panel>
       )}

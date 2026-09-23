@@ -40,11 +40,10 @@ export function StatusPill({ health, label, state, size = 'md' }: StatusPillProp
     <div
       className={cn(
         'bg-raised rounded-full inline-flex items-center gap-2 px-3 text-ink',
-        statusTextClass(statusToken),
         size === 'sm' ? 'h-6 text-12' : 'h-[22px] text-13',
       )}
     >
-      {icon}
+      <span className={cn('inline-flex', statusTextClass(statusToken))}>{icon}</span>
       <span>{displayLabel}</span>
     </div>
   );

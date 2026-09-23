@@ -10,6 +10,7 @@ import { useKioskMode } from '@/layout/useKioskMode';
 import { useFullscreen } from '@/layout/useFullscreen';
 import { EmptyState } from '@/ui/EmptyState';
 import { Button } from '@/ui/Button';
+import { SegmentedControl } from '@/ui/SegmentedControl';
 import { toast } from '@/ui/Toast';
 import { DashboardTabs } from './DashboardTabs';
 import { DashboardGrid } from './DashboardGrid';
@@ -48,6 +49,7 @@ export function DashboardsPage() {
     null
   );
   const [editing, setEditing] = useState(false);
+  const [scaleMode, setScaleMode] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -90,6 +92,7 @@ export function DashboardsPage() {
       setActiveDashboard(dashboard);
       setWidgets(dashboard.widgets);
       setEditing(false);
+      setScaleMode(false);
       setHasUnsavedChanges(false);
     }
 
@@ -185,6 +188,7 @@ export function DashboardsPage() {
     });
 
     setEditing(false);
+    setScaleMode(false);
     setHasUnsavedChanges(false);
     toast.success('Layout saved');
   };
@@ -198,6 +202,7 @@ export function DashboardsPage() {
     }
     setWidgets(activeDashboard?.widgets ?? []);
     setEditing(false);
+    setScaleMode(false);
     setHasUnsavedChanges(false);
   };
 
@@ -257,9 +262,9 @@ export function DashboardsPage() {
     setConfigType(null);
   };
 
-  const handleKiosk = () => {
+  const handleKiosk = (rotate: boolean) => {
     toggleFullscreen();
-    navigate(`/dashboards/${activeDashboard?.id}?kiosk=1`, { replace: true });
+    navigate(`/dashboards/${activeDashboard?.id}?kiosk=1${rotate ? '&rotate=1' : ''}`, { replace: true });
   };
 
   const handleCreateDashboard = async (name?: string) => {
@@ -364,10 +369,19 @@ export function DashboardsPage() {
       <div className="flex-1 overflow-auto" style={kioskMode ? { paddingBottom: 32 * kioskZoom } : undefined}>
         <div className={kioskMode ? 'p-4' : 'p-6'} style={kioskMode ? { zoom: kioskZoom } : undefined}>
           {editing && operate && (
-            <div className="mb-4 flex gap-2">
+            <div className="mb-4 flex items-center gap-2">
               <Button variant="primary" onClick={() => setPickerOpen(true)}>
                 Add widget
               </Button>
+              <SegmentedControl
+                value={scaleMode ? 'scale' : 'resize'}
+                onChange={(v) => setScaleMode(v === 'scale')}
+                options={[
+                  { value: 'resize', label: 'Resize' },
+                  { value: 'scale', label: 'Scale' },
+                ]}
+                size="sm"
+              />
             </div>
           )}
 
@@ -375,6 +389,7 @@ export function DashboardsPage() {
             dashboard={activeDashboard}
             widgets={widgets}
             editing={editing}
+            scaleMode={scaleMode}
             onChange={handleWidgetChange}
             onConfigure={handleConfigureWidget}
             onRemove={handleRemoveWidget}

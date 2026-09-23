@@ -69,6 +69,20 @@ describe.skipIf(!RUN)('ssh.ts integration (dev sshd)', () => {
     }
   }, 20000);
 
+  it('runs docker system df against the dev sshd (real Docker socket)', async () => {
+    const keys = createKeyStore(DEV_KEYS_DIR, log);
+    const pool = createSshPool(baseConfig(), keys, log);
+    try {
+      const t = target({ isCoolifyHost: true });
+      const command = buildCommand({ op: 'dockerDf' }, t.user);
+      const result = await pool.exec(t, command, 15000);
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('"Type":"Images"');
+    } finally {
+      await pool.close();
+    }
+  }, 20000);
+
   it('tries the wrong key first, then the right one', async () => {
     // Force deterministic ordering: the wrong key ranks ssh_key@* (tried first),
     // the right key is renamed so it ranks last and is only reached on retry.

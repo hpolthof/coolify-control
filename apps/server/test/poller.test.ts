@@ -101,6 +101,9 @@ function disconnectedHosts(): ConnectorHub {
     async ping() {
       throw new Error('should not be called while disconnected');
     },
+    async dockerDf() {
+      throw new Error('should not be called while disconnected');
+    },
     status() {
       return {
         connected: false,
@@ -126,6 +129,27 @@ async function waitFor(predicate: () => boolean, timeoutMs = 2000): Promise<void
     if (Date.now() - start > timeoutMs) throw new Error('timed out waiting for condition');
     await new Promise((r) => setTimeout(r, 5));
   }
+}
+
+const SAMPLE_DOCKER_DF = [
+  '{"Type":"Images","TotalCount":"12","Active":"5","Size":"4.1GB","Reclaimable":"2.3GB (56%)"}',
+  '{"Type":"Containers","TotalCount":"6","Active":"5","Size":"365B","Reclaimable":"0B (0%)"}',
+  '{"Type":"Local Volumes","TotalCount":"3","Active":"1","Size":"3.1GB","Reclaimable":"3.1GB (100%)"}',
+  '{"Type":"Build Cache","TotalCount":"26","Active":"0","Size":"1.2GB","Reclaimable":"1.2GB"}',
+].join('\n');
+
+function connectedHostsStatus() {
+  return {
+    connected: true,
+    version: '2.0.0',
+    hostname: 'test-connector',
+    keysFound: 1,
+    cloudflared: false,
+    connectedAt: new Date().toISOString(),
+    lastSeenAt: new Date().toISOString(),
+    remoteAddress: '127.0.0.1',
+    lastError: null,
+  };
 }
 
 describe('poller with a disconnected connector', () => {
@@ -160,6 +184,114 @@ describe('poller with a disconnected connector', () => {
       expect(server!.sshOk).toBe(false);
       expect(server!.lastError).toBe('Connector not connected');
       expect(server!.health).not.toBe('down');
+    } finally {
+      await poller.stop();
+    }
+  });
+});
+
+describe('poller dockerDf pipeline', () => {
+  it('fills servers[].dockerDisk shortly after the connector connects', async () => {
+    const config = baseConfig();
+    const log = createLogger('silent');
+    const db = openDatabase(':memory:');
+    const repos = createRepos(db);
+    const state = createStateStore();
+    const hosts: ConnectorHub = {
+      async collect() {
+        throw new Error('metrics not exercised in this test');
+      },
+      async logs() {
+        throw new Error('not used in this test');
+      },
+      async ping() {
+        throw new Error('not used in this test');
+      },
+      async dockerDf() {
+        return { stdout: SAMPLE_DOCKER_DF, stderr: '', code: 0, durationMs: 5 };
+      },
+      status: connectedHostsStatus,
+      attach() {},
+      disconnectToken() {},
+      close() {},
+    };
+
+    const deps: PollerDeps = { config, log, db, repos, coolify: fakeCoolify(), hosts, state };
+    const poller = createPoller(deps);
+
+    poller.start();
+    try {
+      await waitFor(() => state.get().servers.find((s) => s.uuid === 'srv-1')?.dockerDisk != null);
+      const server = state.get().servers.find((s) => s.uuid === 'srv-1')!;
+      expect(server.dockerDisk).toMatchObject({
+        error: null,
+        images: { count: 12, active: 5, size: 4_100_000_000, reclaimable: 2_300_000_000 },
+        containers: { count: 6, active: 5, size: 365, reclaimable: 0 },
+        volumes: { count: 3, active: 1, size: 3_100_000_000, reclaimable: 3_100_000_000 },
+        buildCache: { count: 26, active: 0, size: 1_200_000_000, reclaimable: 1_200_000_000 },
+      });
+      expect(server.dockerDisk!.reclaimable).toBe(2_300_000_000 + 3_100_000_000 + 1_200_000_000);
+    } finally {
+      await poller.stop();
+    }
+  });
+
+  it('shows an upgrade hint (and does not throw) when the connector rejects dockerDf as unknown', async () => {
+    const config = baseConfig();
+    const log = createLogger('silent');
+    const db = openDatabase(':memory:');
+    const repos = createRepos(db);
+    const state = createStateStore();
+    const hosts: ConnectorHub = {
+      async collect() {
+        throw new Error('metrics not exercised in this test');
+      },
+      async logs() {
+        throw new Error('not used in this test');
+      },
+      async ping() {
+        throw new Error('not used in this test');
+      },
+      async dockerDf() {
+        throw new Error('unknown op: {"op":"dockerDf"}');
+      },
+      status: connectedHostsStatus,
+      attach() {},
+      disconnectToken() {},
+      close() {},
+    };
+
+    const deps: PollerDeps = { config, log, db, repos, coolify: fakeCoolify(), hosts, state };
+    const poller = createPoller(deps);
+
+    poller.start();
+    try {
+      await waitFor(() => state.get().servers.find((s) => s.uuid === 'srv-1')?.dockerDisk != null);
+      const server = state.get().servers.find((s) => s.uuid === 'srv-1')!;
+      expect(server.dockerDisk!.error).toBe('Update the connector to see cleanup data');
+      expect(server.dockerDisk!.images).toEqual({ count: 0, active: 0, size: 0, reclaimable: 0 });
+    } finally {
+      await poller.stop();
+    }
+  });
+
+  it('keeps servers[].dockerDisk null (not an empty object) while disconnected', async () => {
+    const config = baseConfig();
+    const log = createLogger('silent');
+    const db = openDatabase(':memory:');
+    const repos = createRepos(db);
+    const state = createStateStore();
+    const hosts = disconnectedHosts();
+
+    const deps: PollerDeps = { config, log, db, repos, coolify: fakeCoolify(), hosts, state };
+    const poller = createPoller(deps);
+
+    poller.start();
+    try {
+      await waitFor(() => state.get().servers.length > 0);
+      await new Promise((r) => setTimeout(r, 100));
+      const server = state.get().servers.find((s) => s.uuid === 'srv-1')!;
+      expect(server.dockerDisk).toBeNull();
     } finally {
       await poller.stop();
     }

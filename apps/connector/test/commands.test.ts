@@ -54,4 +54,20 @@ describe('buildCommand', () => {
   it('throws for ping (never runs a command)', () => {
     expect(() => buildCommand({ op: 'ping' }, 'root')).toThrow(/ping does not run a command/);
   });
+
+  it('builds the docker system df command for root', () => {
+    const cmd = buildCommand({ op: 'dockerDf' }, 'root');
+    expect(cmd.startsWith('sh -c ')).toBe(true);
+    expect(cmd).toContain("docker system df --format '\\''{{json .}}'\\''");
+  });
+
+  it('wraps docker system df with sudo for non-root users', () => {
+    const cmd = buildCommand({ op: 'dockerDf' }, 'deploy');
+    expect(cmd.startsWith('if sudo -n true 2>/dev/null; then sudo -n sh -c ')).toBe(true);
+    expect(cmd).toContain('docker system df');
+  });
+
+  it('rejects an unknown op with a clear error', () => {
+    expect(() => buildCommand({ op: 'bogus' } as never, 'root')).toThrow(/unknown op/);
+  });
 });

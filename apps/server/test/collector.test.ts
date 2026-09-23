@@ -13,6 +13,7 @@ import {
   parseDockerPair,
   parseDockerLabels,
   parsePercent,
+  parseDockerSystemDf,
 } from '../src/collect/parsers';
 import { parseCollectorOutput, type CollectorOutput } from '../src/collect/collector';
 
@@ -311,6 +312,57 @@ describe('parseDockerSize', () => {
   it('handles invalid input', () => {
     expect(parseDockerSize('invalid')).toBe(0);
     expect(parseDockerSize('12XB')).toBe(0);
+  });
+});
+
+describe('parseDockerSystemDf', () => {
+  it('parses a normal docker system df --format json output', () => {
+    const stdout = [
+      '{"Type":"Images","TotalCount":"12","Active":"5","Size":"4.1GB","Reclaimable":"2.3GB (56%)"}',
+      '{"Type":"Containers","TotalCount":"6","Active":"5","Size":"365B","Reclaimable":"0B (0%)"}',
+      '{"Type":"Local Volumes","TotalCount":"3","Active":"1","Size":"3.1GB","Reclaimable":"3.1GB (100%)"}',
+      '{"Type":"Build Cache","TotalCount":"26","Active":"0","Size":"1.2GB","Reclaimable":"1.2GB"}',
+      '',
+    ].join('\n');
+
+    const result = parseDockerSystemDf(stdout);
+
+    expect(result.images).toEqual({ count: 12, active: 5, size: 4_100_000_000, reclaimable: 2_300_000_000 });
+    expect(result.containers).toEqual({ count: 6, active: 5, size: 365, reclaimable: 0 });
+    expect(result.volumes).toEqual({ count: 3, active: 1, size: 3_100_000_000, reclaimable: 3_100_000_000 });
+    expect(result.buildCache).toEqual({ count: 26, active: 0, size: 1_200_000_000, reclaimable: 1_200_000_000 });
+    expect(result.reclaimable).toBe(2_300_000_000 + 0 + 3_100_000_000 + 1_200_000_000);
+  });
+
+  it('treats a missing type (e.g. no build cache yet) as all zeros', () => {
+    const stdout = [
+      '{"Type":"Images","TotalCount":"1","Active":"1","Size":"100MB","Reclaimable":"0B (0%)"}',
+      '{"Type":"Containers","TotalCount":"1","Active":"1","Size":"1MB","Reclaimable":"0B (0%)"}',
+      '{"Type":"Local Volumes","TotalCount":"0","Active":"0","Size":"0B","Reclaimable":"0B"}',
+    ].join('\n');
+
+    const result = parseDockerSystemDf(stdout);
+
+    expect(result.buildCache).toEqual({ count: 0, active: 0, size: 0, reclaimable: 0 });
+    expect(result.volumes).toEqual({ count: 0, active: 0, size: 0, reclaimable: 0 });
+  });
+
+  it('handles a fully empty 0B volumes line', () => {
+    const stdout = '{"Type":"Local Volumes","TotalCount":"0","Active":"0","Size":"0B","Reclaimable":"0B"}';
+    const result = parseDockerSystemDf(stdout);
+    expect(result.volumes).toEqual({ count: 0, active: 0, size: 0, reclaimable: 0 });
+  });
+
+  it('ignores blank lines and malformed JSON', () => {
+    const stdout = '\n\nnot json\n{"Type":"Images","TotalCount":"2","Active":"1","Size":"1GB","Reclaimable":"500MB (50%)"}\n';
+    const result = parseDockerSystemDf(stdout);
+    expect(result.images).toEqual({ count: 2, active: 1, size: 1_000_000_000, reclaimable: 500_000_000 });
+  });
+
+  it('returns all zeros for empty stdout', () => {
+    const result = parseDockerSystemDf('');
+    expect(result.images).toEqual({ count: 0, active: 0, size: 0, reclaimable: 0 });
+    expect(result.reclaimable).toBe(0);
   });
 });
 

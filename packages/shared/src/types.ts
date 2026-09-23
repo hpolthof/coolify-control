@@ -53,7 +53,26 @@ export interface ServerSummary {
   health: Health;
   metrics: ServerMetrics | null;
   resourceCounts: { total: number; running: number; stopped: number; unhealthy: number };
+  dockerDisk: DockerDiskUsage | null; // from `docker system df`, refreshed every few minutes; null until known
   updatedAt: string | null; // ISO
+}
+
+/** One row of `docker system df` (sizes in bytes). */
+export interface DockerDfRow {
+  count: number;
+  active: number;
+  size: number;
+  reclaimable: number;
+}
+
+export interface DockerDiskUsage {
+  ts: number; // epoch ms when collected
+  images: DockerDfRow;
+  containers: DockerDfRow;
+  volumes: DockerDfRow;
+  buildCache: DockerDfRow;
+  reclaimable: number; // sum of the four reclaimable values
+  error: string | null; // e.g. "Update the connector to see cleanup data"
 }
 
 // ---------- Resources (applications, services, databases) ----------
@@ -142,9 +161,20 @@ export interface CoolifyStatus {
   lastSyncAt: string | null;
 }
 
+/** Connector state for everyone (viewers and kiosk screens), without anything sensitive. */
+export interface ConnectorSnapshot {
+  connected: boolean;
+  version: string | null;
+  hostname: string | null;
+  connectedAt: string | null;
+  lastSeenAt: string | null;
+  cloudflared: boolean | null;
+}
+
 export interface Snapshot {
   generatedAt: string;
   coolify: CoolifyStatus;
+  connector: ConnectorSnapshot;
   servers: ServerSummary[];
   resources: ResourceSummary[];
   projects: ProjectSummary[];
@@ -228,7 +258,9 @@ export type WidgetType =
   | 'problems' // everything that needs attention, with how long
   | 'heatmap' // one tile per running resource, coloured by CPU or memory
   | 'top' // top N resources by CPU or memory
-  | 'server-strip'; // all servers as one compact row
+  | 'server-strip' // all servers as one compact row
+  | 'connector' // is the connector connected, per-server reachability
+  | 'docker-cleanup'; // reclaimable Docker space per server and its effect on disk
 
 export type ServerChartMetric = 'cpu' | 'mem' | 'disk' | 'load' | 'net';
 export type ResourceChartMetric = 'cpu' | 'mem' | 'net';
@@ -251,6 +283,7 @@ export interface WidgetConfig {
   text?: string;
   limit?: number; // top: number of rows
   includeStopped?: boolean; // problems: also list stopped/exited resources
+  scale?: number; // content zoom of the widget (0.5–3, default 1), set by "Scale" mode in the editor
 }
 
 export interface Widget {

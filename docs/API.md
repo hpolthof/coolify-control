@@ -78,7 +78,7 @@ else into the command; `LogResponse.source` is `'connector'`). Split timestamps 
 | DELETE | `/api/dashboards/:id` | O | – | 204 |
 | POST | `/api/dashboards/reorder` | O | `{ ids: number[] }` | 204 |
 
-Validate with zod: name 1–60 chars, max 100 widgets, widget `x,y ≥ 0`, `w 1–12`, `h 1–40`, `type` in `WidgetType`.
+Validate with zod: name 1–60 chars, max 100 widgets, widget `x,y ≥ 0`, `w 1–24`, `h 1–80` (24-column grid, 14px rows), `type` in `WidgetType`.
 On first start, if there are no dashboards, create one named "Overview" with an `overview` widget and one
 `server` widget per known server (done lazily in `GET /api/dashboards` when the list is empty and servers exist).
 
