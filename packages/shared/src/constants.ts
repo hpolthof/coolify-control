@@ -21,25 +21,26 @@ export const GRID_COLS = 24;
 export const GRID_ROW_HEIGHT = 14;
 export const GRID_MARGIN = 12;
 
-// Default size (grid units of the 24-column grid) per widget type.
+// Default size (grid units of the 24-column grid) per widget type. Every widget may shrink to 2×2;
+// content that doesn't fit is clipped (use Scale to shrink the content with it).
 export const WIDGET_DEFAULT_SIZE: Record<WidgetType, { w: number; h: number; minW: number; minH: number }> = {
-  server: { w: 8, h: 14, minW: 6, minH: 12 },
-  'server-compact': { w: 6, h: 4, minW: 4, minH: 4 },
-  resource: { w: 6, h: 10, minW: 6, minH: 8 },
-  'resource-compact': { w: 6, h: 4, minW: 4, minH: 4 },
-  'server-chart': { w: 12, h: 10, minW: 6, minH: 8 },
-  'resource-chart': { w: 12, h: 10, minW: 6, minH: 8 },
-  stat: { w: 4, h: 6, minW: 4, minH: 4 },
-  overview: { w: 12, h: 6, minW: 8, minH: 6 },
-  project: { w: 8, h: 12, minW: 6, minH: 6 },
-  text: { w: 6, h: 6, minW: 4, minH: 4 },
-  clock: { w: 4, h: 4, minW: 4, minH: 4 },
-  problems: { w: 8, h: 12, minW: 6, minH: 6 },
-  heatmap: { w: 12, h: 10, minW: 6, minH: 6 },
-  top: { w: 8, h: 12, minW: 6, minH: 6 },
-  'server-strip': { w: 24, h: 4, minW: 8, minH: 4 },
-  connector: { w: 6, h: 8, minW: 4, minH: 6 },
-  'docker-cleanup': { w: 10, h: 10, minW: 6, minH: 6 },
+  server: { w: 8, h: 14, minW: 2, minH: 2 },
+  'server-compact': { w: 6, h: 4, minW: 2, minH: 2 },
+  resource: { w: 6, h: 10, minW: 2, minH: 2 },
+  'resource-compact': { w: 6, h: 4, minW: 2, minH: 2 },
+  'server-chart': { w: 12, h: 10, minW: 2, minH: 2 },
+  'resource-chart': { w: 12, h: 10, minW: 2, minH: 2 },
+  stat: { w: 4, h: 6, minW: 2, minH: 2 },
+  overview: { w: 12, h: 6, minW: 2, minH: 2 },
+  project: { w: 8, h: 12, minW: 2, minH: 2 },
+  text: { w: 6, h: 6, minW: 2, minH: 2 },
+  clock: { w: 4, h: 4, minW: 2, minH: 2 },
+  problems: { w: 8, h: 12, minW: 2, minH: 2 },
+  heatmap: { w: 12, h: 10, minW: 2, minH: 2 },
+  top: { w: 8, h: 12, minW: 2, minH: 2 },
+  'server-strip': { w: 24, h: 4, minW: 2, minH: 2 },
+  connector: { w: 6, h: 8, minW: 2, minH: 2 },
+  'docker-cleanup': { w: 10, h: 10, minW: 2, minH: 2 },
 };
 
 export const WIDGET_LABELS: Record<WidgetType, string> = {
@@ -62,7 +63,8 @@ export const WIDGET_LABELS: Record<WidgetType, string> = {
   'docker-cleanup': 'Docker cleanup',
 };
 
-export const WIDGET_SCALE_MIN = 0.5;
-export const WIDGET_SCALE_MAX = 3;
+// Content zoom of a widget (Scale mode / Ctrl-drag in the editor). Wide on purpose.
+export const WIDGET_SCALE_MIN = 0.1;
+export const WIDGET_SCALE_MAX = 10;
 
 export const WIDGET_TYPES = Object.keys(WIDGET_LABELS) as WidgetType[];

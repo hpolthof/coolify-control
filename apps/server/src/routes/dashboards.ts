@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import type { Dashboard, DashboardInput, WidgetType } from '@cc/shared';
-import { GRID_COLS, WIDGET_DEFAULT_SIZE, WIDGET_TYPES } from '@cc/shared';
+import { GRID_COLS, WIDGET_DEFAULT_SIZE, WIDGET_SCALE_MAX, WIDGET_SCALE_MIN, WIDGET_TYPES } from '@cc/shared';
 import type { AppDeps } from '../deps';
 import { HttpError } from '../app';
 import { requireRole } from '../auth/plugin';
@@ -24,7 +24,7 @@ const widgetConfigSchema = z.object({
   text: z.string().optional(),
   limit: z.number().int().min(1).max(50).optional(),
   includeStopped: z.boolean().optional(),
-  scale: z.number().min(0.5).max(3).optional(),
+  scale: z.number().min(WIDGET_SCALE_MIN).max(WIDGET_SCALE_MAX).optional(),
 });
 
 const widgetSchema = z.object({

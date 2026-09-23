@@ -307,20 +307,35 @@ export function WidgetConfigDialog({
           </Field>
         )}
 
-        <Field label="Scale" hint="Zooms the widget's content; its grid size stays the same">
+        <Field label="Scale" hint="Zooms the widget's content (10–1000%); its grid size stays the same">
           <div className="flex items-center gap-3">
             <input
               type="range"
               min={WIDGET_SCALE_MIN * 100}
               max={WIDGET_SCALE_MAX * 100}
-              step={10}
+              step={5}
               value={Math.round(scale * 100)}
               onChange={e => setScale(Number(e.target.value) / 100)}
               className="flex-1 accent-accent"
             />
-            <span className="num text-13 text-ink-2 w-12 text-right flex-shrink-0">
-              {Math.round(scale * 100)}%
-            </span>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <input
+                type="number"
+                min={WIDGET_SCALE_MIN * 100}
+                max={WIDGET_SCALE_MAX * 100}
+                step={5}
+                value={Math.round(scale * 100)}
+                onChange={e => {
+                  const pct = Number(e.target.value);
+                  if (Number.isFinite(pct) && pct > 0) {
+                    setScale(Math.min(WIDGET_SCALE_MAX, Math.max(WIDGET_SCALE_MIN, pct / 100)));
+                  }
+                }}
+                aria-label="Scale in percent"
+                className="num w-20 h-8 px-2 text-right bg-sunken border border-rule rounded-control text-13 text-ink"
+              />
+              <span className="text-13 text-ink-3">%</span>
+            </div>
             {scale !== 1 && (
               <Button variant="secondary" size="sm" onClick={() => setScale(1)}>
                 Reset to 100%
