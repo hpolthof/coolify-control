@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import type { Dashboard, DashboardInput, WidgetType } from '@cc/shared';
-import { WIDGET_DEFAULT_SIZE } from '@cc/shared';
+import { WIDGET_DEFAULT_SIZE, WIDGET_TYPES } from '@cc/shared';
 import type { AppDeps } from '../deps';
 import { HttpError } from '../app';
 import { requireRole } from '../auth/plugin';
@@ -22,6 +22,8 @@ const widgetConfigSchema = z.object({
   range: z.enum(['1h', '6h', '24h', '7d']).optional(),
   stat: z.string().optional(),
   text: z.string().optional(),
+  limit: z.number().int().min(1).max(50).optional(),
+  includeStopped: z.boolean().optional(),
 });
 
 const widgetSchema = z.object({
@@ -41,19 +43,7 @@ const dashboardInputSchema = z.object({
   rotationSeconds: z.number().int().min(1).nullable().optional(),
 });
 
-const VALID_WIDGET_TYPES: WidgetType[] = [
-  'server',
-  'server-compact',
-  'resource',
-  'resource-compact',
-  'server-chart',
-  'resource-chart',
-  'stat',
-  'overview',
-  'project',
-  'text',
-  'clock',
-];
+const VALID_WIDGET_TYPES: WidgetType[] = WIDGET_TYPES;
 
 function validateWidgets(widgets: unknown[]): void {
   if (!Array.isArray(widgets)) {

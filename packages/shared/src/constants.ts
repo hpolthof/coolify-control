@@ -29,6 +29,10 @@ export const WIDGET_DEFAULT_SIZE: Record<WidgetType, { w: number; h: number; min
   project: { w: 4, h: 6, minW: 3, minH: 3 },
   text: { w: 3, h: 3, minW: 2, minH: 2 },
   clock: { w: 2, h: 2, minW: 2, minH: 2 },
+  problems: { w: 4, h: 6, minW: 3, minH: 3 },
+  heatmap: { w: 6, h: 5, minW: 3, minH: 3 },
+  top: { w: 4, h: 6, minW: 3, minH: 3 },
+  'server-strip': { w: 12, h: 2, minW: 4, minH: 2 },
 };
 
 export const WIDGET_LABELS: Record<WidgetType, string> = {
@@ -43,4 +47,10 @@ export const WIDGET_LABELS: Record<WidgetType, string> = {
   project: 'Project',
   text: 'Note',
   clock: 'Clock',
+  problems: 'Problems',
+  heatmap: 'Heatmap',
+  top: 'Top consumers',
+  'server-strip': 'Server strip',
 };
+
+export const WIDGET_TYPES = Object.keys(WIDGET_LABELS) as WidgetType[];

@@ -4,6 +4,10 @@ import { Dialog } from '@/ui/Dialog';
 import { Button } from '@/ui/Button';
 import {
   Activity,
+  AlertTriangle,
+  Flame,
+  ListOrdered,
+  Rows3,
   AppWindow,
   BarChart3,
   Clock,
@@ -35,6 +39,10 @@ const iconMap: Record<WidgetType, any> = {
   project: Layers,
   text: Type,
   clock: Clock,
+  problems: AlertTriangle,
+  heatmap: Flame,
+  top: ListOrdered,
+  'server-strip': Rows3,
 };
 
 const groups: { title: string; types: WidgetType[] }[] = [
@@ -43,7 +51,7 @@ const groups: { title: string; types: WidgetType[] }[] = [
     title: 'Resources',
     types: ['resource', 'resource-compact', 'resource-chart', 'project'],
   },
-  { title: 'Fleet', types: ['overview', 'stat'] },
+  { title: 'Fleet', types: ['overview', 'problems', 'server-strip', 'heatmap', 'top', 'stat'] },
   { title: 'Other', types: ['text', 'clock'] },
 ];
 
@@ -130,6 +138,10 @@ function getWidgetDescription(type: WidgetType): string {
     project: 'All resources in a project',
     text: 'Text notes and markdown',
     clock: 'Current time and date',
+    problems: 'Everything that needs attention, and for how long',
+    heatmap: 'Every running resource as a tile, coloured by load',
+    top: 'Resources using the most CPU or memory',
+    'server-strip': 'All servers in one compact row',
   };
   return descriptions[type];
 }

@@ -224,7 +224,11 @@ export type WidgetType =
   | 'overview' // fleet health summary
   | 'project' // all resources of a project, as a list
   | 'text' // markdown-lite note
-  | 'clock';
+  | 'clock'
+  | 'problems' // everything that needs attention, with how long
+  | 'heatmap' // one tile per running resource, coloured by CPU or memory
+  | 'top' // top N resources by CPU or memory
+  | 'server-strip'; // all servers as one compact row
 
 export type ServerChartMetric = 'cpu' | 'mem' | 'disk' | 'load' | 'net';
 export type ResourceChartMetric = 'cpu' | 'mem' | 'net';
@@ -245,6 +249,8 @@ export interface WidgetConfig {
   range?: TimeRange;
   stat?: StatKind;
   text?: string;
+  limit?: number; // top: number of rows
+  includeStopped?: boolean; // problems: also list stopped/exited resources
 }
 
 export interface Widget {

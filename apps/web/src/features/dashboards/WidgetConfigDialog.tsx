@@ -71,6 +71,8 @@ export function WidgetConfigDialog({
   const [range, setRange] = useState(widget?.config.range ?? ('1h' as TimeRange));
   const [stat, setStat] = useState(widget?.config.stat ?? '');
   const [text, setText] = useState(widget?.config.text ?? '');
+  const [limit, setLimit] = useState(String(widget?.config.limit ?? 10));
+  const [includeStopped, setIncludeStopped] = useState(widget?.config.includeStopped ?? false);
 
   const fields = type ? WIDGET_FIELDS[type] : [];
 
@@ -129,6 +131,10 @@ export function WidgetConfigDialog({
     if (fields.includes('range')) newConfig.range = range;
     if (fields.includes('stat')) newConfig.stat = stat as any;
     if (fields.includes('text')) newConfig.text = text;
+    if (fields.includes('serverFilter')) newConfig.serverUuid = serverUuid || undefined;
+    if (fields.includes('usageMetric')) newConfig.metric = (metric === 'mem' ? 'mem' : 'cpu') as any;
+    if (fields.includes('limit')) newConfig.limit = Number(limit) || 10;
+    if (fields.includes('includeStopped')) newConfig.includeStopped = includeStopped;
 
     onSave({
       ...widget,
@@ -179,6 +185,51 @@ export function WidgetConfigDialog({
               placeholder="Select a server"
             />
           </Field>
+        )}
+
+        {fields.includes('serverFilter') && (
+          <Field label="Servers">
+            <Select
+              value={serverUuid}
+              onChange={setServerUuid}
+              options={[{ value: '', label: 'All servers' }, ...serverOptions]}
+            />
+          </Field>
+        )}
+
+        {fields.includes('usageMetric') && (
+          <Field label="Show">
+            <Select
+              value={metric === 'mem' ? 'mem' : 'cpu'}
+              onChange={setMetric}
+              options={[
+                { value: 'cpu', label: 'CPU' },
+                { value: 'mem', label: 'Memory' },
+              ]}
+            />
+          </Field>
+        )}
+
+        {fields.includes('limit') && (
+          <Field label="Rows">
+            <Select
+              value={limit}
+              onChange={setLimit}
+              options={['5', '10', '15', '20'].map((n) => ({ value: n, label: n }))}
+            />
+          </Field>
+        )}
+
+        {fields.includes('includeStopped') && (
+          <label className="flex items-center gap-2 text-13 text-ink-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeStopped}
+              onChange={(e) => setIncludeStopped(e.target.checked)}
+              className="accent-accent"
+            />
+            Also list stopped resources
+          </label>
         )}
 
         {fields.includes('resource') && (

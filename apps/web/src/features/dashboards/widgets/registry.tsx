@@ -12,8 +12,25 @@ import { TextWidget } from './TextWidget';
 import { ClockWidget } from './ClockWidget';
 import { ChartWidget } from './ChartWidget';
 import { MissingWidget } from './MissingWidget';
+import { ProblemsWidget } from './ProblemsWidget';
+import { HeatmapWidget } from './HeatmapWidget';
+import { TopWidget } from './TopWidget';
+import { ServerStripWidget } from './ServerStripWidget';
 
-export type WidgetField = 'title' | 'server' | 'resource' | 'project' | 'serverMetric' | 'resourceMetric' | 'range' | 'stat' | 'text';
+export type WidgetField =
+  | 'title'
+  | 'server'
+  | 'resource'
+  | 'project'
+  | 'serverMetric'
+  | 'resourceMetric'
+  | 'range'
+  | 'stat'
+  | 'text'
+  | 'serverFilter' // optional server, empty = all servers
+  | 'usageMetric' // cpu | mem
+  | 'limit'
+  | 'includeStopped';
 
 export const WIDGET_FIELDS: Record<WidgetType, WidgetField[]> = {
   server: ['server'],
@@ -27,6 +44,10 @@ export const WIDGET_FIELDS: Record<WidgetType, WidgetField[]> = {
   project: ['title', 'project'],
   text: ['title', 'text'],
   clock: ['title'],
+  problems: ['title', 'serverFilter', 'includeStopped'],
+  heatmap: ['title', 'serverFilter', 'usageMetric'],
+  top: ['title', 'serverFilter', 'usageMetric', 'limit'],
+  'server-strip': ['title'],
 };
 
 export function renderWidget(widget: Widget, ctx: { editing: boolean }): ReactNode {
@@ -110,6 +131,29 @@ export function renderWidget(widget: Widget, ctx: { editing: boolean }): ReactNo
         <ClockWidget title={config.title} />
       );
 
+    case 'problems':
+      return (
+        <ProblemsWidget title={config.title} serverUuid={config.serverUuid} includeStopped={config.includeStopped ?? false} />
+      );
+
+    case 'heatmap':
+      return (
+        <HeatmapWidget title={config.title} serverUuid={config.serverUuid} metric={config.metric === 'mem' ? 'mem' : 'cpu'} />
+      );
+
+    case 'top':
+      return (
+        <TopWidget
+          title={config.title}
+          serverUuid={config.serverUuid}
+          metric={config.metric === 'mem' ? 'mem' : 'cpu'}
+          limit={config.limit ?? 10}
+        />
+      );
+
+    case 'server-strip':
+      return <ServerStripWidget title={config.title} />;
+
     default:
       return null;
   }
@@ -185,9 +229,27 @@ export function widgetTitle(widget: Widget, snapshot: Snapshot | null): string {
     case 'clock':
       return 'Clock';
 
+    case 'problems':
+      return withServer('Problems', snapshot, config.serverUuid);
+
+    case 'heatmap':
+      return withServer(config.metric === 'mem' ? 'Memory heatmap' : 'CPU heatmap', snapshot, config.serverUuid);
+
+    case 'top':
+      return withServer(config.metric === 'mem' ? 'Top memory' : 'Top CPU', snapshot, config.serverUuid);
+
+    case 'server-strip':
+      return 'Servers';
+
     default:
       return 'Widget';
   }
+}
+
+/** "Top CPU" or "Top CPU · web-prod-01" when the widget is limited to one server. */
+function withServer(label: string, snapshot: Snapshot, serverUuid: string | undefined): string {
+  const server = serverUuid ? snapshot.servers.find((s) => s.uuid === serverUuid) : undefined;
+  return server ? `${label} · ${server.name}` : label;
 }
 
 // Wrapper components to use hooks

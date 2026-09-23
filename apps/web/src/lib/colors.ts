@@ -23,3 +23,7 @@ export const COLORS = {
   crit: '#d03b3b',
   unknown: '#6f7c94',
 } as const;
+
+// Sequential single-hue ramp for magnitude heatmaps (HeatmapWidget): dark -> bright,
+// stops at 0/20/40/60/80/100%. Interpolate between adjacent stops for in-between values.
+export const HEAT_RAMP = ['#1c2638', '#104281', '#1c5cab', '#3987e5', '#6da7ec', '#b7d3f6'] as const;
