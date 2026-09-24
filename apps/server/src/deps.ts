@@ -166,7 +166,7 @@ export interface WebSocketLike {
 }
 
 export interface HostExecutor {
-  collect(target: ConnectorTarget, timeoutMs?: number): Promise<ExecOutput>;
+  collect(target: ConnectorTarget, withStats?: boolean, timeoutMs?: number): Promise<ExecOutput>;
   logs(target: ConnectorTarget, container: string, lines: number, timeoutMs?: number): Promise<ExecOutput>;
   ping(target: ConnectorTarget, timeoutMs?: number): Promise<ExecOutput>;
   dockerDf(target: ConnectorTarget, timeoutMs?: number): Promise<ExecOutput>;

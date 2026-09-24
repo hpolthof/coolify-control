@@ -27,6 +27,7 @@ function baseConfig(trustProxy: number | false): Config {
     connectorImage: 'ghcr.io/hpolthof/coolify-control-connector:latest',
     connectorKeysDir: '/data/coolify/ssh/keys',
     pollIntervalMs: 15000,
+    dockerStatsPollIntervalMs: 60000,
     coolifyPollIntervalMs: 30000,
     historyDays: 7,
     rawRetentionHours: 24,

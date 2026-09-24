@@ -18,6 +18,7 @@ export interface Config {
   connectorKeysDir: string; // Coolify's SSH key dir on the host (mounted read-only into the connector)
 
   pollIntervalMs: number; // server/container metrics via the connector
+  dockerStatsPollIntervalMs: number; // how often to run docker stats (subset of pollIntervalMs ticks)
   coolifyPollIntervalMs: number; // Coolify API inventory
   historyDays: number;
   rawRetentionHours: number;
@@ -73,6 +74,7 @@ export function loadConfig(): Config {
     connectorKeysDir: env('CONNECTOR_KEYS_DIR', '/data/coolify/ssh/keys')!,
 
     pollIntervalMs: Math.max(5000, int('POLL_INTERVAL_MS', 15000)),
+    dockerStatsPollIntervalMs: Math.max(5000, int('DOCKER_STATS_POLL_INTERVAL_MS', 60000)),
     coolifyPollIntervalMs: Math.max(5000, int('COOLIFY_POLL_INTERVAL_MS', 30000)),
     historyDays: int('HISTORY_DAYS', 7),
     rawRetentionHours: int('RAW_RETENTION_HOURS', 24),

@@ -4,11 +4,7 @@
 import type { ConnectorOp } from '@cc/shared';
 import { isSafeContainerName, shellQuote } from './quote';
 
-/**
- * The shell script that collects metrics on the remote server.
- * Moved verbatim from apps/server/src/ssh/collector.ts (COLLECT_SCRIPT).
- */
-export const COLLECT_SCRIPT = `#!/bin/sh
+const COLLECT_SCRIPT_COMMON = `#!/bin/sh
 echo "@@stat1"; head -n1 /proc/stat
 echo "@@net1"; cat /proc/net/dev
 sleep 1
@@ -22,8 +18,22 @@ echo "@@df"; df -Pk 2>/dev/null
 echo "@@os"; (. /etc/os-release 2>/dev/null && echo "$PRETTY_NAME"); uname -r
 echo "@@dockerversion"; docker version --format '{{.Server.Version}}' 2>&1
 echo "@@ps"; docker ps -a --no-trunc --format '{{json .}}' 2>&1
-echo "@@stats"; docker stats --no-stream --no-trunc --format '{{json .}}' 2>&1
+`;
+
+/**
+ * Full collect: system metrics + docker ps + docker stats (CPU per container).
+ * docker stats --no-stream holds a 1-second measurement window per container,
+ * so it is expensive on hosts with many containers.
+ */
+export const COLLECT_SCRIPT = COLLECT_SCRIPT_COMMON + `echo "@@stats"; docker stats --no-stream --no-trunc --format '{{json .}}' 2>&1
 echo "@@end"
+`;
+
+/**
+ * Light collect: system metrics + docker ps, NO docker stats.
+ * Use this on frequent ticks; run the full script less often to limit CPU impact.
+ */
+export const COLLECT_SCRIPT_LIGHT = COLLECT_SCRIPT_COMMON + `echo "@@end"
 `;
 
 const MIN_LOG_LINES = 1;
@@ -44,7 +54,7 @@ export function buildCommand(op: ConnectorOp, user: string): string {
 function buildPayload(op: ConnectorOp): string {
   switch (op.op) {
     case 'collect':
-      return COLLECT_SCRIPT;
+      return op.withStats === false ? COLLECT_SCRIPT_LIGHT : COLLECT_SCRIPT;
     case 'logs':
       return buildLogsPayload(op.container, op.lines);
     case 'dockerDf':

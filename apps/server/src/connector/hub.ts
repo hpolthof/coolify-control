@@ -313,8 +313,8 @@ export function createConnectorHub(log: Logger): ConnectorHub {
   }
 
   return {
-    collect(target, timeoutMs = DEFAULT_TIMEOUTS.collect) {
-      return request(target, { op: 'collect' }, timeoutMs);
+    collect(target, withStats, timeoutMs = DEFAULT_TIMEOUTS.collect) {
+      return request(target, { op: 'collect', withStats }, timeoutMs);
     },
     logs(target, container, lines, timeoutMs = DEFAULT_TIMEOUTS.logs) {
       return request(target, { op: 'logs', container, lines }, timeoutMs);

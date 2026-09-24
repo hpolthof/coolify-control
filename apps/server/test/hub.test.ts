@@ -52,7 +52,7 @@ describe('ConnectorHub', () => {
     hub.attach(socket, { tokenId: 1, remoteAddress: '127.0.0.1' });
 
     // Request issued before hello arrives.
-    const promise = hub.collect(target, 2000);
+    const promise = hub.collect(target, true, 2000);
 
     // No request frame should have gone out yet.
     await new Promise((r) => setTimeout(r, 10));
@@ -125,7 +125,7 @@ describe('ConnectorHub', () => {
     hub.attach(socket, { tokenId: 1, remoteAddress: '127.0.0.1' });
     socket.emit('message', JSON.stringify(hello()));
 
-    const promise = hub.collect(target, 5000);
+    const promise = hub.collect(target, true, 5000);
     await vi.waitFor(() => expect(socket.send).toHaveBeenCalled());
 
     socket.emit('close', 1006, Buffer.from('connection reset'));

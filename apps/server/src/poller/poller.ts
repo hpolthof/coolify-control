@@ -66,6 +66,7 @@ interface ServerState {
   failures: number;
   loggedError: string | null | undefined; // undefined = nothing logged yet
   metrics: ServerMetrics | null;
+  lastStatsAt: number; // epoch ms of the last full (with docker stats) collect
 }
 
 interface ResourceState {
@@ -145,7 +146,7 @@ export function createPoller(deps: PollerDeps): PollerHandle {
   function serverState(uuid: string): ServerState {
     let s = servers.get(uuid);
     if (!s) {
-      s = { ok: false, error: null, lastPollAt: null, durationMs: null, failures: 0, loggedError: undefined, metrics: null };
+      s = { ok: false, error: null, lastPollAt: null, durationMs: null, failures: 0, loggedError: undefined, metrics: null, lastStatsAt: 0 };
       servers.set(uuid, s);
     }
     return s;
@@ -278,13 +279,17 @@ export function createPoller(deps: PollerDeps): PollerHandle {
     };
   }
 
-  async function collect(server: InventoryServer): Promise<CollectorOutput> {
+  async function collect(server: InventoryServer): Promise<{ out: CollectorOutput; withStats: boolean }> {
+    const now = Date.now();
+    const s = serverState(server.uuid);
+    const withStats = now - s.lastStatsAt >= config.dockerStatsPollIntervalMs;
     const target = targetFor(server.uuid)!;
-    const res = await hosts.collect(target);
+    const res = await hosts.collect(target, withStats);
     if (!res.stdout.includes('@@end')) {
       throw new Error((res.stderr || res.stdout).trim().split('\n').pop() || `collector exited with code ${res.code}`);
     }
-    return parseCollectorOutput(res.stdout);
+    if (withStats) s.lastStatsAt = now;
+    return { out: parseCollectorOutput(res.stdout), withStats };
   }
 
   async function collectDockerDf(server: InventoryServer): Promise<DockerDiskUsage> {
@@ -334,7 +339,7 @@ export function createPoller(deps: PollerDeps): PollerHandle {
     return true;
   }
 
-  function applyContainers(serverUuid: string, out: CollectorOutput, ts: number, rows: ResourceMetricRow[]) {
+  function applyContainers(serverUuid: string, out: CollectorOutput, withStats: boolean, ts: number, rows: ResourceMetricRow[]) {
     if (!inventory) return;
     const statsById = new Map<string, RawContainerStats>();
     const statsByName = new Map<string, RawContainerStats>();
@@ -351,8 +356,12 @@ export function createPoller(deps: PollerDeps): PollerHandle {
       const rs = resourceState(res.uuid);
       const containers = mapped.get(res.uuid) ?? [];
 
+      // On light collects (no docker stats), preserve previous per-container stats so the
+      // UI keeps showing the last known CPU/mem values rather than blanking them out.
+      const prevStats = new Map(rs.containers.map((c) => [c.id, c.stats]));
+
       rs.containers = containers.map((c) => {
-        const st = statsFor(c);
+        const st = withStats ? statsFor(c) : null;
         return {
           id: c.id,
           name: c.name,
@@ -373,7 +382,7 @@ export function createPoller(deps: PollerDeps): PollerHandle {
                 blockWrite: st.blockWrite,
                 pids: st.pids,
               }
-            : null,
+            : (withStats ? null : (prevStats.get(c.id) ?? null)),
         };
       });
 
@@ -382,6 +391,9 @@ export function createPoller(deps: PollerDeps): PollerHandle {
         rs.prevNet = null;
         continue;
       }
+
+      // Skip resource metric rows on light collects — stats haven't changed.
+      if (!withStats) continue;
 
       let cpu = 0;
       let memUsed = 0;
@@ -456,7 +468,7 @@ export function createPoller(deps: PollerDeps): PollerHandle {
       const s = serverState(server.uuid);
       const t0 = Date.now();
       try {
-        const out = await collect(server);
+        const { out, withStats } = await collect(server);
         const ts = Date.now();
         s.metrics = toServerMetrics(out, ts);
         s.ok = true;
@@ -474,7 +486,7 @@ export function createPoller(deps: PollerDeps): PollerHandle {
           rxBps: s.metrics.netRxBps,
           txBps: s.metrics.netTxBps,
         });
-        applyContainers(server.uuid, out, ts, resourceRows);
+        applyContainers(server.uuid, out, withStats, ts, resourceRows);
       } catch (err) {
         const message = errorMessage(err);
         s.ok = false;
